@@ -6,8 +6,8 @@
     npm install domino-nsf
 
 ## Requirements
-domino-nsf is developed Windows, and it's currently the only supported platform. 
-Binaries has been build for Win32 and only been tested with Node 5.1.0, 32bit.
+domino-nsf is developed on Windows, and it's currently the only supported platform. 
+Binaries has been build for Win32 and only tested with Node 5.1.0, 32bit.
 
 ## Usage
 
