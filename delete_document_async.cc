@@ -79,7 +79,7 @@ public:
 		catch (LNSTATUS Lnerror) {
 			char ErrorBuf[512];
 			LNGetErrorMessage(Lnerror, ErrorBuf, 512);
-			std::cout << "SaveDocError:  " << ErrorBuf << std::endl;
+			std::cout << "DeleteDocError:  " << ErrorBuf << std::endl;
 		}
 	}
 
