@@ -145,6 +145,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\addon.cc" />
+    <ClCompile Include="..\delete_document_async.cc" />
     <ClCompile Include="..\document_async.cc" />
     <ClCompile Include="..\ItemValue.cc" />
     <ClCompile Include="..\save_document_async.cc" />

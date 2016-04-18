@@ -6,6 +6,7 @@
         "addon.cc",        
 		"document_async.cc",
 		"save_document_async.cc",
+		"delete_document_async.cc",
 		"view_async.cc",
 		"ItemValue.cc"
       ],
