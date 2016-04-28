@@ -1,14 +1,34 @@
 {
   "name": "domino-nsf",
-  "version": "0.0.3",
-  "description": "Domino nsf driver",
+  "version": "0.0.3"
+  "description": ""Nodejs driver for Domino nsf databases"",
   "homepage": "https://github.com/nthjelme/nodejs-domino",
-  "main": "index.js",
   "private": true,
   "gypfile": true,
   "dependencies": {
     "nan": "*"
   },
+  "keywords": [
+    "database",
+    "domino",
+    "json",
+    "nosql",
+    "nsf"
+  ],
+  "os": ["win32"],
+  "cpu" ["ia32"],
+  "license": "MIT",
+  "main": "index.js",
+  "author": {
+    "email": "nhjelme@gmail.com",
+    "name": "Nils Tarjei Hjelme"
+  },
+  "maintainers": [
+    {
+      "name": "nhjelme",
+      "email": "nhjelme@gmail.com"
+    }
+  ],
   "repository": {
     "type" : "git",
     "url" : "https://github.com/nthjelme/nodejs-domino.git"

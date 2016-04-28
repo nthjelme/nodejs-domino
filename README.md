@@ -11,9 +11,9 @@ Binaries has been build for Win32 and only tested with Node 5.1.0, 32bit.
 
 ## Usage
 
-    var domino = require('domino-nsf');
-    var db = {server:'',database:'database.nsf'}
-	    var view = {view:"People",category:""};    
+    var Domino = require('domino-nsf');
+    var domino = Domino();
+    
     var doc = {
 	  "FullName":"John Smith",
       "tags":["test","test2"],
@@ -21,20 +21,23 @@ Binaries has been build for Win32 and only tested with Node 5.1.0, 32bit.
 	  "Form":"Person"
     };
     
-    domino.initSession();
+    var db = domino.use({server:'',database:'database.nsf'});
     
-    domino.getDocumentAsync(db,"documentUNID",function(error,document) {
+    db.get("documentUNID",function(error,document) {
     	console.log("document",document);
     };
 
-    domino.saveDocumentAsync(db,doc,function(error,document) {
+    db.insert(doc,function(error,document) {
 		// returns the saved document
     	console.log("document",document);
     };
 
-
-	domino.getViewAsync(db,view,function(err,view) {
+	db.view({view:"People",category:""},function(err,view) {
  	  console.log("view result",view);
+    });
+    
+    db.del("documentUNID",function(error,result) {
+    	console.log("result",result);
     });
 
 ## Development and Contribution
