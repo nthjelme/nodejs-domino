@@ -1,9 +1,9 @@
 {
-  "name": "async_work",
-  "version": "0.0.0",
-  "description": "Node.js Addons Example #9",
+  "name": "domino-nsf",
+  "version": "0.0.3",
+  "description": "Domino nsf driver",
   "homepage": "https://github.com/nthjelme/nodejs-domino",
-  "main": "addon.js",
+  "main": "index.js",
   "private": true,
   "gypfile": true,
   "dependencies": {
