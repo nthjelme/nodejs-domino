@@ -48,7 +48,20 @@ To build the addon, you need the
 * the Lotus C++ API 
 * Nan for Node.js.
 * Microsoft VisualStudio 2015
- 
-#### Configuring Visual Studio
-Change the "Include Directories" and "Library Directories" in the Project properties to where you have extraxted the corresponding C and C++ API files.
+* [node-gyp](https://github.com/nodejs/node-gyp)
 
+#### Configuring enviroment for node-gyp build
+You must set these environment variables before you build the addon
+
+NOTES_INCLUDE must contain: 
+* the C and C++ API header files
+
+NOTES_LIB must contain:
+* the path to the Notes C&C++ library folder
+
+
+#### Configuring and building
+    node-gyp configure
+..and build..  
+
+    node-gyp build
