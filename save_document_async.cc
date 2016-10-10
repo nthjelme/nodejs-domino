@@ -33,6 +33,7 @@
 #include <iterator>
 #include <vector>
 #include <osmisc.h>
+#include <ctime>
 
 using v8::Function;
 using v8::Local;
@@ -91,7 +92,7 @@ public:
 			std::map<std::string, ItemValue>::iterator it;
 			for (it = doc.begin(); it != doc.end(); it++)
 			{
-				ItemValue value = it->second;
+				ItemValue value = it->second;				
 				if (value.type == 0) {
 					LNNumbers item = LNNumbers();
 					if (isEdit) {
@@ -149,6 +150,28 @@ public:
 					}
 
 				}
+				else if (value.type == 3) {					
+					LNDatetimes item = LNDatetimes();					
+					LNDatetime dt = LNDatetime();				
+
+					try {
+						std::time_t t = static_cast<time_t>(value.dateTimeValue / 1000);
+						struct tm* ltime = localtime(&t);
+						int year = ltime->tm_year + 1900;
+						int month = ltime->tm_mon + 1;
+						int day = ltime->tm_mday;
+						int hour = ltime->tm_hour+1;
+						int minute = ltime->tm_min+1;
+						int second = ltime->tm_sec+1;
+						dt.SetDate(month, day, year);
+						dt.SetTime(hour, minute, second);
+						NewDoc.CreateItem(it->first.c_str(), &item);
+						item.SetValue(dt);					
+					}
+					catch (...) {
+						std::cout << "error creating tm struct" << std::endl;
+					}					
+				}
 			}
 
 			NewDoc.Save();
@@ -167,6 +190,7 @@ public:
 	void HandleOKCallback() {
 		HandleScope scope;
 		Local<Object> resDoc = Nan::New<Object>();		
+		
 
 		try {
 			std::map<std::string, ItemValue>::iterator it;
@@ -189,6 +213,9 @@ public:
 					Nan::Set(resDoc, New<v8::String>(it->first).ToLocalChecked(), arr);
 
 				}
+				else if (value.type == 3) {					
+					Nan::Set(resDoc, New<v8::String>(it->first).ToLocalChecked(), New<v8::Date>(value.dateTimeValue).ToLocalChecked());
+				}
 			}
 
 		}
@@ -197,11 +224,12 @@ public:
 			LNGetErrorMessage(Lnerror, ErrorBuf, 512);
 			std::cout << "Handle Error:  " << ErrorBuf << std::endl;
 		}
+		std::cout << "return" << std::endl;
 		Local<Value> argv[] = {
 			Null()
 			, resDoc
 		};
-
+		std::cout << "set callback,call" << std::endl;
 		callback->Call(2, argv);
 	}
 
@@ -261,6 +289,13 @@ NAN_METHOD(SaveDocumentAsync) {
 		} else if (val->IsNumber()) {
 			Local<Number> numVal = val->ToNumber();			
 			doc.insert(std::make_pair(key, ItemValue(numVal->NumberValue())));			
+		} else if (val->IsDate()) {
+			double ms = v8::Date::Cast(*val)->NumberValue();
+			//Local<Number> numVal = val->ToNumber();
+			//double millisSinceEpoch = numVal->NumberValue();
+			//std::time_t t = static_cast<time_t>(ms);
+			std::cout << "start time in:" << ms << std::endl;
+			doc.insert(std::make_pair(key, ItemValue(ms,3)));
 		}
 		
 	}	
