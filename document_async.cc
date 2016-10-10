@@ -64,16 +64,12 @@ public:
 	void Execute() {
 		LNSetThrowAllErrors(TRUE);
 		LNNotesSession session;
-		try {
-					
-			session.InitThread();
-			std::cout << "thread inited  " << std::endl;
-			LNString                DbTitle = "";
-			//char *                  DbServer = NULL;
+		try {					
+			session.InitThread();			
+			LNString                DbTitle = "";			
 			LNItemArray items;
 			LNDatabase Db;
-			session.GetDatabase(dbName.c_str(), &Db, serverName.c_str());
-			std::cout << "open db  " << std::endl;
+			session.GetDatabase(dbName.c_str(), &Db, serverName.c_str());			
 			Db.Open();
 			
 			const LNString * lnstrUNID = new LNString(unid.c_str());
@@ -161,6 +157,9 @@ public:
 					}
 					Nan::Set(resDoc, New<v8::String>(it->first).ToLocalChecked(), arr);
 
+				}
+				else if (value.type == 3) {					
+					Nan::Set(resDoc, New<v8::String>(it->first).ToLocalChecked(), New<v8::Date>(value.dateTimeValue).ToLocalChecked());
 				}
 			}
 			

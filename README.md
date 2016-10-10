@@ -11,9 +11,9 @@ Binaries has been build for Win32 and only tested with Node 5.1.0, 32bit.
 
 ## Usage
 
-    var domino = require('domino-nsf');
-    var db = {server:'',database:'database.nsf'}
-	    var view = {view:"People",category:""};    
+    var Domino = require('domino-nsf');
+    var domino = Domino();
+    
     var doc = {
 	  "FullName":"John Smith",
       "tags":["test","test2"],
@@ -21,20 +21,23 @@ Binaries has been build for Win32 and only tested with Node 5.1.0, 32bit.
 	  "Form":"Person"
     };
     
-    domino.initSession();
+    var db = domino.use({server:'',database:'database.nsf'});
     
-    domino.getDocumentAsync(db,"documentUNID",function(error,document) {
+    db.get("documentUNID",function(error,document) {
     	console.log("document",document);
     };
 
-    domino.saveDocumentAsync(db,doc,function(error,document) {
+    db.insert(doc,function(error,document) {
 		// returns the saved document
     	console.log("document",document);
     };
 
-
-	domino.getViewAsync(db,view,function(err,view) {
+	db.view({view:"People",category:""},function(err,view) {
  	  console.log("view result",view);
+    });
+    
+    db.del("documentUNID",function(error,result) {
+    	console.log("result",result);
     });
 
 ## Development and Contribution
@@ -45,7 +48,20 @@ To build the addon, you need the
 * the Lotus C++ API 
 * Nan for Node.js.
 * Microsoft VisualStudio 2015
- 
-#### Configuring Visual Studio
-Change the "Include Directories" and "Library Directories" in the Project properties to where you have extraxted the corresponding C and C++ API files.
+* [node-gyp](https://github.com/nodejs/node-gyp)
 
+#### Configuring enviroment for node-gyp build
+You must set these environment variables before you build the addon
+
+NOTES_INCLUDE must contain: 
+* the C and C++ API header files
+
+NOTES_LIB must contain:
+* the path to the Notes C&C++ library folder
+
+
+#### Configuring and building
+    node-gyp configure
+..and build..  
+
+    node-gyp build

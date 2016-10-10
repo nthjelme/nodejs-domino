@@ -65,62 +65,36 @@ ItemValue::ItemValue(LNItem *item) {
 }
 
 void ItemValue::DateValue(LNDatetime * date) {	
-	LNINT day,year,month,hour,minute,second,hundredth;
-	std::string isodate;
-	char * em = "";
-	char * ed = "";
-	char * eM = "";
-	char * es = "";
-	char * eH = "";
+	try {		
+		LNINT day, year, month, hour, minute, second, hundredth;
+		struct tm * timeinfo;
+		
+		date->GetDate(&month, &day, &year);		
+		if (date->IsTimeDefined()) {			
+			date->GetTime(&hour, &minute, &second, &hundredth);			
+		} else {			
+			hour = 0;
+			minute = 0;
+			second = 0;
+			hundredth = 0;
+		}
+		
+		time_t rawtime = time(0);		
+		timeinfo = localtime(&rawtime);
+		timeinfo->tm_year = year - 1900;
+		timeinfo->tm_mon = month - 1;
+		timeinfo->tm_mday = day;
 
-	date->AdjustTimeZone(LNTIMEZONE_GMT);
-	date->GetDate(&month, &day, &year);
+		timeinfo->tm_hour = hour - 1;
+		timeinfo->tm_min = minute - 1;
+		timeinfo->tm_sec = second - 1;
+		type = 3;		
+		double dtime = mktime(timeinfo);
+		
+		dateTimeValue = dtime*1000; // convert to double time
 
-	if (date->IsTimeDefined()) {
-		date->GetTime(&hour, &minute, &second, &hundredth);
 	}
-	else {
-		hour = 0;
-		minute = 0;
-		second = 0;
-		hundredth = 0;
-	}
-	if (month < 10) {
-		em = "0";
-	}
-	if (day < 10) {
-		ed = "0";
-	}
-	if (hour < 10) {
-		eH = "0";
-	}
-	if (minute < 10) {
-		eM = "0";
-	}
-	if (second < 10) {
-		es = "0";
-	}
-
-	isodate.append(std::to_string(year));
-	isodate.append("-");
-	isodate.append(em);
-	isodate.append(std::to_string(month));
-	isodate.append("-");
-	isodate.append(ed);
-	isodate.append(std::to_string(day));
-	isodate.append("T");
-	isodate.append(eH);
-	isodate.append(std::to_string(hour));
-	isodate.append(":");
-	isodate.append(eM);
-	isodate.append(std::to_string(minute));
-	isodate.append(":");
-	isodate.append(es);
-	isodate.append(std::to_string(second));
-	isodate.append(".");
-	isodate.append(std::to_string(hundredth));
-	isodate.append("Z");
-	
-	type = 1;
-	stringValue = isodate;	
+	catch (...) {
+		std::cout << "error getting date from datetime" << std::endl;
+	}	
 }

@@ -24,43 +24,11 @@
 * SOFTWARE.
 *******************************************************************************/
 
-#ifndef ITEM_VALUE_H_
-#define ITEM_VALUE_H_
+#ifndef DELETE_DOCUMENT_ASYNC_H_
+#define DELETE_DOCUMENT_ASYNC_H_
 
 #include <nan.h>
-#include <lncppapi.h>
-#include <ctime>
-#include <time.h>
 
-class ItemValue {
-public:
-	ItemValue() {}
-	ItemValue(std::string s) {
-		type = 1;
-		stringValue = s;
-	}
-	ItemValue(double n) {
-		type = 0;
-		numberValue = n;
-	}
-	ItemValue(std::vector<std::string> vecS) {
-		type = 2;
-		vectorStrValue = vecS;
-	}
-	ItemValue(double t,int ty) {
-		type = 3;
-		dateTimeValue = t;
+NAN_METHOD(DeleteDocumentAsync);
 
-	}
-	ItemValue(LNItem *item);	
-	void TextItem(LNItem *item);
-	void DateValue(LNDatetime * date);
-
-	int type;
-	double numberValue;
-	double dateTimeValue;
-	std::string stringValue;
-	std::vector<std::string> vectorStrValue;	
-};
-
-#endif  // ITEM_VALUE_H_
+#endif  // DELETE_DOCUMENT_ASYNC_H_
