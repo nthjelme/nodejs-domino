@@ -27,8 +27,14 @@ function Domino() {
 		};
 		
 		var deleteFn = function(unid,callback) {
-			dominoDriver.deleteDocumentAsync(unid,function(error,result) {
+			dominoDriver.deleteDocumentAsync(localDb,unid,function(error,result) {
 				callback(error,result);
+			});
+		};
+		
+		var makeResponse = function(doc,parent,callback) {
+			dominoDriver.makeResponseDocumentAsync(localDb,doc["@unid"], parent["@unid"], function(error,result) {
+					callback(error,result);
 			});
 		};
 		
@@ -43,6 +49,7 @@ function Domino() {
 		localDb.del = deleteFn;
 		localDb.view = view;
 		localDb.replicate = replicate;
+		localDb.makeResponse = makeResponse;
 		return localDb;
 			
 	};
