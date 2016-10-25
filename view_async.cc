@@ -146,8 +146,10 @@ public:
 		catch (LNSTATUS Lnerror) {
 			char ErrorBuf[512];
 			LNGetErrorMessage(Lnerror, ErrorBuf, 512);
-			std::cout << "getViewError:  " << ErrorBuf << std::endl;
-			session.TermThread();
+			if (session.IsInitialized()) {
+				session.TermThread();
+			}
+			SetErrorMessage(ErrorBuf);
 		}
 	}
 
@@ -198,6 +200,17 @@ public:
 			, viewRes
 		};
 
+		callback->Call(2, argv);
+	}
+
+	void HandleErrorCallback() {
+		HandleScope scope;
+		Local<Object> errorObj = Nan::New<Object>();
+		Nan::Set(errorObj, New<v8::String>("errorMessage").ToLocalChecked(), New<v8::String>(ErrorMessage()).ToLocalChecked());
+		Local<Value> argv[] = {
+			errorObj,
+			Null()
+		};
 		callback->Call(2, argv);
 	}
 

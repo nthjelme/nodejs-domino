@@ -62,9 +62,9 @@ public:
 	// should go on `this`.
 	void Execute() {
 		LNSetThrowAllErrors(TRUE);
-
+		LNNotesSession session;
 		try {
-			LNNotesSession session;
+			
 			session.InitThread();
 
 			LNDatabase Db;
@@ -183,7 +183,10 @@ public:
 		} catch (LNSTATUS Lnerror) {
 			char ErrorBuf[512];
 			LNGetErrorMessage(Lnerror, ErrorBuf, 512);
-			std::cout << "SaveDocError:  " << ErrorBuf << std::endl;
+			if (session.IsInitialized()) {
+				session.TermThread();
+			}
+			SetErrorMessage(ErrorBuf);
 		}
 	}
 
@@ -230,6 +233,17 @@ public:
 			, resDoc
 		};
 		std::cout << "set callback,call" << std::endl;
+		callback->Call(2, argv);
+	}
+
+	void HandleErrorCallback() {
+		HandleScope scope;
+		Local<Object> errorObj = Nan::New<Object>();
+		Nan::Set(errorObj, New<v8::String>("errorMessage").ToLocalChecked(), New<v8::String>(ErrorMessage()).ToLocalChecked());
+		Local<Value> argv[] = {
+			errorObj,
+			Null()
+		};
 		callback->Call(2, argv);
 	}
 
