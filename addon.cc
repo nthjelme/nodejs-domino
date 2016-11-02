@@ -31,6 +31,7 @@
 #include "delete_document_async.h"
 #include "replicate_database_async.h"
 #include "makeresponse_document.h"
+#include "getresponse_documents.h"
 #include <iostream>
 #include <lncppapi.h>
 
@@ -77,6 +78,9 @@ NAN_MODULE_INIT(InitAll) {
 	
 	Set(target, New<String>("makeResponseDocumentAsync").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(MakeResponseDocumentAsync)).ToLocalChecked());
+
+	Set(target, New<String>("getResponseDocumentsAsync").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(GetResponseDocumentsAsync)).ToLocalChecked());
 
 	Set(target, New<String>("replicateDatabaseAsync").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(ReplicateDatabaseAsync)).ToLocalChecked());
