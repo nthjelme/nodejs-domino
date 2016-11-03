@@ -28,18 +28,14 @@
 #include <iostream>
 
 void ItemValue::TextItem(LNItem *item) {
-	LNText tekst = (LNText)*item;
-	LNINT j;
-	std::vector<std::string> result_list;
-
-	for (j = 0; j < tekst.GetCount(); j++) {
-		LNString value = tekst[j];
+	LNText itemText = (LNText)*item;	
+	vectorStrValue.clear();
+	for (LNINT j = 0; j < itemText.GetCount(); j++) {
+		LNString value = itemText[j];
 		char buf[132000];
-		LNStringTranslate(value, LNCHARSET_UTF8, 132000, buf);
-		//OSTranslate(OS_TRANSLATE_LMBCS_TO_UTF8, value.GetTextPtr(), 132000, buf, 132000);
-		result_list.push_back(buf);
-	}
-	vectorStrValue = result_list;
+		LNStringTranslate(value, LNCHARSET_UTF8, 132000, buf);			
+		vectorStrValue.push_back(buf);
+	}		
 	type = 2;
 }
 
