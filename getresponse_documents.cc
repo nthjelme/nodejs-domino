@@ -87,21 +87,21 @@ public:
 			responseCount = documentResponses.GetCount();
 			for (int j = 0; j < responseCount; j++) {
 				LNItemArray items;
-				LNDocument resDoc;
+				LNDocument responseDoc;
 				std::map <std::string, ItemValue> doc;
 
-				resDoc = documentResponses[j];
-				resDoc.Open();
-				resDoc.GetItems(&items);
+				responseDoc = documentResponses[j];
+				responseDoc.Open();
+				responseDoc.GetItems(&items);
 
-				const UNIVERSALNOTEID * ln_unid = resDoc.GetUniversalID();
+				const UNIVERSALNOTEID * ln_unid = responseDoc.GetUniversalID();
 				LNUniversalID lnUnid = LNUniversalID(ln_unid);
 				LNString unidStr = lnUnid.GetText();
 				std::string unidStdStr = unidStr;
 				doc.insert(std::make_pair("@unid", ItemValue(unidStdStr)));
 
 				
-				for (LNINT i = 0; i < Doc.GetItemCount(); i++) {
+				for (LNINT i = 0; i < responseDoc.GetItemCount(); i++) {
 					LNItem item = items[i];
 
 					LNITEMTYPE type = item.GetType();
@@ -179,9 +179,9 @@ public:
 					else if (value.type == 2) {
 						int ii;
 						Local<Array> arr = New<Array>(value.vectorStrValue.size());
-						Nan::Set(arr, 0, Nan::New<String>("").ToLocalChecked());
+						Nan::Set(arr, 0, Nan::New<String>("").ToLocalChecked());						
 						for (ii = 0; ii < value.vectorStrValue.size(); ii++) {
-							Nan::Set(arr, 0, Nan::New<String>(value.vectorStrValue[ii]).ToLocalChecked());
+							Nan::Set(arr, ii, Nan::New<String>(value.vectorStrValue[ii]).ToLocalChecked());
 						}
 						Nan::Set(resDoc, New<v8::String>(it->first).ToLocalChecked(), arr);
 

@@ -180,7 +180,7 @@ public:
 						Local<Array> arr = New<Array>(value.vectorStrValue.size());
 						Nan::Set(arr, 0, Nan::New<String>("").ToLocalChecked());
 						for (ii = 0; ii < value.vectorStrValue.size(); ii++) {
-							Nan::Set(arr, 0, Nan::New<String>(value.vectorStrValue[ii]).ToLocalChecked());
+							Nan::Set(arr, ii, Nan::New<String>(value.vectorStrValue[ii]).ToLocalChecked());
 						}
 						Nan::Set(resDoc, New<v8::String>(it->first).ToLocalChecked(), arr);
 
