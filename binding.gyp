@@ -9,6 +9,9 @@
 		"delete_document_async.cc",
 		"view_async.cc",
 		"ItemValue.cc",
+		"DataHelper.cc",
+		"getresponse_documents.cc",
+		"makeresponse_documents.cc",
 		"replicate_database_async.cc"
       ],
       "include_dirs": ["<!(node -e \"require('nan')\")","<!(echo %NOTES_INCLUDE%)"],
