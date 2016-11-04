@@ -40,17 +40,20 @@ void ItemValue::TextItem(LNItem *item) {
 }
 
 ItemValue::ItemValue(LNItem *item) {
-	LNITEMTYPE type = item->GetType();
-	if (type == LNITEMTYPE_TEXT) {
+	LNITEMTYPE itemType = item->GetType();
+	if (itemType == LNITEMTYPE_TEXT) {
 		TextItem(item);		
 	}
-	else if (type == LNITEMTYPE_NUMBERS) {
+	else if (itemType == LNITEMTYPE_NUMBERS) {
+		
 		LNNumbers tall = (LNNumbers)*item;
 		LNNumber value = tall[0];		
 		type = 0;
 		numberValue = value;		
+		//iv = new ItemValue(value);
+
 	}
-	else if (type == LNITEMTYPE_DATETIMES) {
+	else if (itemType == LNITEMTYPE_DATETIMES) {
 		LNDatetimes dates = (LNDatetimes)*item;
 		if (!dates.IsNull()) {
 			LNDatetime date = dates[0];
