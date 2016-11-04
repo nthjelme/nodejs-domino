@@ -49,9 +49,6 @@ LNNotesSession session; // session as a global, should maby be in a Persist obje
 void InitDominoSession(const Nan::FunctionCallbackInfo<v8::Value>& info) { 
 	char *argv[] = { "./addon" };
 	session.Init(1, argv);	
-	if (session.IsInitialized()) {
-		std::cout << "Domino session initialized" << std::endl;
-	}
 }
 
 void TermDominoSession(const Nan::FunctionCallbackInfo<v8::Value>& info) {	
