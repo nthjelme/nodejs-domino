@@ -86,6 +86,9 @@ public:
 				const UNIVERSALNOTEID * unidUNID = lnUNID->GetUniversalID();
 				Db.GetDocument(unidUNID, &NewDoc);				
 				isEdit = true;
+
+				// remove @unid from map
+				doc.erase(iter);
 			} else {
 				Db.CreateDocument(&NewDoc);				
 			}
@@ -166,11 +169,22 @@ public:
 						int second = ltime->tm_sec+1;
 						dt.SetDate(month, day, year);
 						dt.SetTime(hour, minute, second);
-						NewDoc.CreateItem(it->first.c_str(), &item);
-						item.SetValue(dt);					
+						
+						if (isEdit) {
+							if (NewDoc.HasItem(it->first.c_str())) {
+								NewDoc.GetItem(it->first.c_str(), &item);
+								item.DeleteAll();
+							}
+							else {
+								NewDoc.CreateItem(it->first.c_str(), &item);
+							}
+						} else {
+							NewDoc.CreateItem(it->first.c_str(), &item);
+						}
+						item.SetValue(dt);
 					}
 					catch (...) {
-						std::cout << "error creating tm struct" << std::endl;
+						SetErrorMessage("Error creating date struct");
 					}					
 				}
 			}
@@ -247,7 +261,6 @@ NAN_METHOD(SaveDocumentAsync) {
 		Local<String> keyStr = Local<String>::Cast(name);
 		v8::String::Utf8Value param1(keyStr->ToString());
 		key = std::string(*param1);
-		
 		Local<Value> val = docParam->Get(name);		
 		
 		if (val->IsString()) {
@@ -257,23 +270,20 @@ NAN_METHOD(SaveDocumentAsync) {
 		} else if (val->IsArray()) {			
 			Local<Array> arrVal = Local<Array>::Cast(val);
 			unsigned int num_locations = arrVal->Length();
-			std::vector<std::string> docVec;
-			for (unsigned int i = 0; i < num_locations; i++) {
-				Local<Object> obj = Local<Object>::Cast(arrVal->Get(i));
-				String::Utf8Value value(obj->ToString());
-				docVec.push_back(*value);
+			if (num_locations>0) {
+				std::vector<std::string> docVec;
+				for (unsigned int i = 0; i < num_locations; i++) {
+					Local<Object> obj = Local<Object>::Cast(arrVal->Get(i));
+					String::Utf8Value value(obj->ToString());
+					docVec.push_back(*value);
+				}
+				doc.insert(std::make_pair(key, ItemValue(docVec)));			
 			}
-			doc.insert(std::make_pair(key, ItemValue(docVec)));			
-
-		} else if (val->IsNumber()) {
+		} else if (val->IsNumber()) {			
 			Local<Number> numVal = val->ToNumber();			
 			doc.insert(std::make_pair(key, ItemValue(numVal->NumberValue())));			
 		} else if (val->IsDate()) {
 			double ms = v8::Date::Cast(*val)->NumberValue();
-			//Local<Number> numVal = val->ToNumber();
-			//double millisSinceEpoch = numVal->NumberValue();
-			//std::time_t t = static_cast<time_t>(ms);
-			std::cout << "start time in:" << ms << std::endl;
 			doc.insert(std::make_pair(key, ItemValue(ms,3)));
 		}
 		
