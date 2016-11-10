@@ -16,6 +16,24 @@ function Domino() {
 		
 		var get = function(unid,callback) {			
 			dominoDriver.getDocumentAsync(localDb,unid,function(error,document) {
+				if (document) {
+					document.getResponses = function(responseCallback) {
+						dominoDriver.getResponseDocumentsAsync(localDb,this["@unid"], function(err,res) {
+							responseCallback(err,res);
+						});
+					};
+					document.makeResponse = function(parent,responseCallback) {
+						dominoDriver.makeResponseDocumentAsync(localDb,this["@unid"], parent["@unid"], function(error,result) {
+							responseCallback(error,result);
+						});
+					}
+					document.save = function(documentCallback) {
+						dominoDriver.saveDocumentAsync(localDb,this,function(error,document) {							
+							documentCallback(error,document);
+						});
+
+					}
+				}
 				callback(error,document);
 			});
 		}
@@ -34,6 +52,12 @@ function Domino() {
 		
 		var makeResponse = function(doc,parent,callback) {
 			dominoDriver.makeResponseDocumentAsync(localDb,doc["@unid"], parent["@unid"], function(error,result) {
+					callback(error,result);
+			});
+		};
+		
+		var getResponses = function(doc,callback) {
+			dominoDriver.getResponseDocumentsAsync(localDb,doc["@unid"], function(error,result) {
 					callback(error,result);
 			});
 		};
