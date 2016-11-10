@@ -7,6 +7,7 @@ Local<Object> DataHelper::getV8Data(std::map <std::string, ItemValue> doc) {
 	for (it = doc.begin(); it != doc.end(); it++)
 	{
 		ItemValue value = it->second;
+		
 		if (value.type == 0) {
 			Nan::Set(resDoc, New<String>(it->first).ToLocalChecked(), New<Number>(value.numberValue));
 		}
@@ -59,6 +60,9 @@ Local<Array> DataHelper::getV8Data(std::vector <std::map<std::string, ItemValue>
 					}
 					Nan::Set(resDoc, New<v8::String>(it->first).ToLocalChecked(), arr);
 
+				}
+				else if (value.type == 3) {
+					Nan::Set(resDoc, New<v8::String>(it->first).ToLocalChecked(), New<v8::Date>(value.dateTimeValue).ToLocalChecked());
 				}
 			}
 			Nan::Set(viewRes, j, resDoc);

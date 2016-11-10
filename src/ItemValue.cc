@@ -54,13 +54,22 @@ ItemValue::ItemValue(LNItem *item) {
 
 	}
 	else if (itemType == LNITEMTYPE_DATETIMES) {
+		
 		LNDatetimes dates = (LNDatetimes)*item;
+		
 		if (!dates.IsNull()) {
+			//std::cout << "date item type: " << itemType << ", count= " << dates.GetCount()<< std::endl;
+			
 			LNDatetime date = dates[0];
 			DateValue(&date);			
 		}
+		
+
 
 	}
+	
+	
+	
 }
 
 void ItemValue::DateValue(LNDatetime * date) {	

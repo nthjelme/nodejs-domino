@@ -25,7 +25,7 @@
 *******************************************************************************/
 
 #include <nan.h>
-#include "document_async.h"  
+#include "document_async.h"
 #include "ItemValue.h"
 #include "DataHelper.h"
 #include <lncppapi.h>
@@ -52,101 +52,82 @@ using Nan::To;
 
 
 
-
-class ViewWorker : public AsyncWorker {
+class DocumentWorker : public AsyncWorker {
 public:
-	ViewWorker(Callback *callback, std::string serverName, std::string dbName, std::string viewName,std::string category)
-		: AsyncWorker(callback), serverName(serverName), dbName(dbName), viewName(viewName),category(category), viewResult() {}
-	~ViewWorker() {}
+	DocumentWorker(Callback *callback, std::string serverName, std::string dbName, std::string unid)
+		: AsyncWorker(callback), serverName(serverName), dbName(dbName), unid(unid),doc(){}
+	~DocumentWorker() {}
 
 	// Executed inside the worker-thread.
 	// It is not safe to access V8, or V8 data structures
 	// here, so everything we need for input and output
 	// should go on `this`.
 	void Execute() {
-		LNNotesSession session;
 		LNSetThrowAllErrors(TRUE);
-
-		try {			
-			session.InitThread();
-			LNViewFolder view;
-			LNVFEntry mainentry;
+		LNNotesSession session;
+		try {					
+			session.InitThread();			
+			LNString                DbTitle = "";			
+			LNItemArray items;
 			LNDatabase Db;
-			
-			session.GetDatabase(dbName.c_str(), &Db, serverName.c_str());
+			session.GetDatabase(dbName.c_str(), &Db, serverName.c_str());			
 			Db.Open();
 			
-			Db.GetViewFolder(viewName.c_str(), &view);
-			view.Open();
-			
-			LNINT columnCount = view.GetColumnCount();
-		
-			LNINT i = view.GetEntryCount();;
-			
+			const LNString * lnstrUNID = new LNString(unid.c_str());
 
-			if (!category.empty()) {				
-					LNVFPosition pos;
+			//Get UNID *
+			LNUniversalID * lnUNID = new LNUniversalID(*lnstrUNID);
+			const UNIVERSALNOTEID * unidUNID = lnUNID->GetUniversalID();
+			LNDocument			  Doc;
+			Db.GetDocument(unidUNID, &Doc);
+			Doc.Open();
+			Doc.GetItems(&items);
+						
+			doc.insert(std::make_pair("@unid", ItemValue(unid)));
 
-					LNINT vCount = 0;
-					LNVFNavigator nav;
-					view.Find(category.c_str(), &mainentry);
-					i = mainentry.GetChildCount();
+			LNINT i;
+			for (i = 0; i < Doc.GetItemCount(); i++) {
+				LNItem item = items[i];
 
-					mainentry.GetPosition(&pos);
-					view.SetPosition(pos);
+				LNITEMTYPE type = item.GetType();
+				LNString itemName = item.GetName();
+				std::string iName = itemName;
 
-			}
-			else {
-				view.GotoFirst(&mainentry);
-				
-			}
-			
-			int count = 0;
-			do {				
-				LNDocument      Doc;
-				LNINT           IndentLevels = 0;										
-				LNINT j;				
-				std::map <std::string, ItemValue> doc;
-
-
-				for (j = 0; j < columnCount; j++) {
-					LNItem item = mainentry[j];
-
-					LNVFColumn column;
-					view.GetColumn(j, &column);
-					LNString internalName = column.GetInternalName();
-					std::string itemName = internalName;
-
-					if (item.IsNull()) {
-						doc.insert(std::make_pair(itemName, ItemValue("")));
-					} else {
-						if (mainentry.IsCategory()) {
-
-						}
-						else {
-							mainentry.GetDocument(&Doc);
-							const UNIVERSALNOTEID * ln_unid = Doc.GetUniversalID();
-							LNUniversalID lnUnid = LNUniversalID(ln_unid);
-							LNString unidStr = lnUnid.GetText();
-							std::string unidStdStr = unidStr;
-							doc.insert(std::make_pair("@unid", ItemValue(unidStdStr)));
-						}
-						doc.insert(std::make_pair(itemName, ItemValue(&item)));						
-					}
+				if (type == LNITEMTYPE_RICHTEXT) {
+					
+					LNRichText rt = (LNRichText)item;	
+					LNString rtText;										
+					LNRTCursor beginCursor;
+					LNRTCursor endCursor;
+					rt.GetCursor(&beginCursor);
+					rt.GetEndCursor(&endCursor);
+					std::string rtString;
+					LNSTATUS status = LNWARN_TOO_MUCH_TEXT;
+					while (status == LNWARN_TOO_MUCH_TEXT) {
+						//TODO: LNStringtranlsate seems removes text from end, find another solution.
+						status = rt.GetText(beginCursor, endCursor, &rtText, &beginCursor);						
+						LNINT bufLength = rtText.GetLength();
+						rtString = rtText;						
+						char *buf = (char *)malloc(sizeof(char) *bufLength + 1);
+						LNStringTranslate(rtText, LNCHARSET_UTF8, bufLength, buf);
+						//OSTranslate(OS_TRANSLATE_LMBCS_TO_UTF8, rtText.GetTextPtr(), bufLength, buf, bufLength);
+						rtString.append(buf);	
+						free(buf);
+					} 										
+					doc.insert(std::make_pair(iName, ItemValue(rtString)));
+					
 				}
-				viewResult.push_back(doc);
-				count++;
-			} while (view.GotoNext(&mainentry) == LNNOERROR && count < i);
-
-			view.Close();
-			Db.Close();
-
+				else {					
+					doc.insert(std::make_pair(iName, ItemValue(&item)));
+				}
+			}		
+			std::map<std::string, ItemValue>::iterator it;
 			
 			session.TermThread();
-		}
+			}
 		catch (LNSTATUS Lnerror) {
 			char ErrorBuf[512];
-			LNGetErrorMessage(Lnerror, ErrorBuf, 512);
+			LNGetErrorMessage(Lnerror, ErrorBuf, 512);			
 			if (session.IsInitialized()) {
 				session.TermThread();
 			}
@@ -154,17 +135,16 @@ public:
 		}
 	}
 
+	
 	// Executed when the async work is complete
 	// this function will be run inside the main event loop
 	// so it is safe to use V8 again
 	void HandleOKCallback() {
 		HandleScope scope;
-		Local<Array> viewRes = DataHelper::getV8Data(viewResult);
-		
-		
+		Local<Object> resDoc = DataHelper::getV8Data(doc);
 		Local<Value> argv[] = {
 			Null()
-			, viewRes
+			, resDoc
 		};
 
 		callback->Call(2, argv);
@@ -181,43 +161,35 @@ public:
 		callback->Call(2, argv);
 	}
 
-private:
+private:	
 	std::string serverName;
 	std::string dbName;
-	std::string viewName;
-	std::string category;
-	std::vector <std::map<std::string, ItemValue>> viewResult;
-
+	std::string unid;	
+	std::map <std::string, ItemValue> doc;
 };
 
 
-NAN_METHOD(GetViewAsync) {	
-	v8::Isolate* isolate = info.GetIsolate();	
+NAN_METHOD(GetDocumentAsync) {
+	v8::Isolate* isolate = info.GetIsolate();
+
 	Local<Object> param = (info[0]->ToObject());
-	Local<Object> viewParam = (info[1]->ToObject());
-	Local<Value> viewKey = String::NewFromUtf8(isolate, "view");
-	Local<Value> catKey = String::NewFromUtf8(isolate, "category");
+	Local<String> unidParam = (info[1]->ToString());
 	Local<Value> serverKey = String::NewFromUtf8(isolate, "server");
 	Local<Value> databaseKey = String::NewFromUtf8(isolate, "database");
 	Local<Value> serverVal = param->Get(serverKey);
 	Local<Value> databaseVal = param->Get(databaseKey);
 
-	Local<Value> viewVal = viewParam->Get(viewKey);
-	Local<Value> catVal = viewParam->Get(catKey);
 	String::Utf8Value serverName(serverVal->ToString());
 	String::Utf8Value dbName(databaseVal->ToString());
-	String::Utf8Value view(viewVal->ToString());
-	String::Utf8Value cat(catVal->ToString());
+	String::Utf8Value unid(unidParam->ToString());
+
 	std::string serverStr;
 	std::string dbStr;
-	std::string viewStr;
-	std::string catStr;
+	std::string unidStr;
 	serverStr = std::string(*serverName);
 	dbStr = std::string(*dbName);
-	viewStr = std::string(*view);
-	catStr = std::string(*cat);
-	
+	unidStr = std::string(*unid);	
 	Callback *callback = new Callback(info[2].As<Function>());
 
-	AsyncQueueWorker(new ViewWorker(callback, serverStr, dbStr, viewStr,catStr));
+	AsyncQueueWorker(new DocumentWorker(callback, serverStr,dbStr,unidStr));
 }
