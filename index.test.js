@@ -18,9 +18,12 @@ describe('domino-nsf',function() {
 		var savedDocument = {};
 		before(function(done) {		
 			db.insert(doc,function(err,result) {
-				if(err) done(err);
-				savedDocument = result;
-				done();
+				if(err) {
+					done(err);
+				} else {
+					savedDocument = result;
+					done();
+				}
 			});				
 		});
 		it ('should create a document with unid with length of 32', function() {
@@ -32,11 +35,41 @@ describe('domino-nsf',function() {
 		it('should have a date property that equals ', function() {
 			expect(savedDocument).to.have.property('date').to.eql(new Date(0));
 		});
-		it('shoud have a Name property that equals Test',function() {
-			expect(savedDocument).to.have.property('Name').to.eql("Test");
+		it('shoud have a Name property that equals ["Test"]',function() {
+			expect(savedDocument).to.have.property('Name').to.eql(["Test"]);
 		});
 		it('shoud have a array property that equals ["a","b","c"]',function() {
 			expect(savedDocument).to.have.property('array').to.eql(["a","b","c"]);
+		});		
+	});
+	
+	describe('get document', function() {
+		var document = {};
+		before(function(done) {
+			db.get("512E36B5CE1D036C4125806800776161",function(err,result) {
+				if (err) { 
+					done(err);
+				} else {
+					document = result;
+					done();
+				}
+			});
+		});
+		
+		it ('should create a document with unid with length of 32', function() {
+			expect(document).to.have.property('@unid').with.length(32);
+		});
+		it ('should have a number property that equals 10', function() {
+			expect(document).to.have.property('number').to.equal(10);
+		});
+		it('should have a date property that equals ', function() {
+			expect(document).to.have.property('date').to.eql(new Date(0));
+		});
+		it('shoud have a Name property that equals ["Test"]',function() {
+			expect(document).to.have.property('Name').to.eql(["Test"]);
+		});
+		it('shoud have a array property that equals ["a","b","c"]',function() {
+			expect(document).to.have.property('array').to.eql(["a","b","c"]);
 		});
 		
 	});
