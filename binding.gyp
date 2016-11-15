@@ -11,7 +11,7 @@
 		"src/view_async.cc",		
 		"src/DocumentItem.cc",
 		"src/DataHelper.cc"
-      ],
+	],
       "conditions": [
 	["OS==\"linux\"",{
 	  "include_dirs": ["<!(node -e \"require('nan')\")","/opt/ibm/notesapi/include"],	  
