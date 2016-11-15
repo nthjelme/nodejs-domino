@@ -1,0 +1,1 @@
+var dominoDriver = require('./build/Release/addon');

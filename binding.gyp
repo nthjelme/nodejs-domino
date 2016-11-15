@@ -11,7 +11,7 @@
 		"src/ItemValue.cc",
 		"src/DataHelper.cc",
 		"src/getresponse_documents.cc",
-		"src/makeresponse_documents.cc",
+		"src/makeresponse_document.cc",
 		"src/replicate_database_async.cc"
       ],
       "include_dirs": ["<!(node -e \"require('nan')\")","<!(echo %NOTES_INCLUDE%)"],
