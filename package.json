@@ -3,6 +3,9 @@
   "version": "0.0.3",
   "description": "Nodejs driver for Domino nsf databases",
   "homepage": "https://github.com/nthjelme/nodejs-domino",
+  "scripts": {
+      "test": "mocha index.test.js"
+  },
   "private": true,
   "gypfile": true,
   "dependencies": {
@@ -38,5 +41,15 @@
   "repository": {
     "type" : "git",
     "url" : "https://github.com/nthjelme/nodejs-domino.git"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "cz-conventional-changelog": "^1.2.0",
+    "mocha": "^3.1.2"
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
   }
 }
