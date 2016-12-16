@@ -1,7 +1,7 @@
 {
   "name": "domino-nsf",
-  "version": "0.0.3",
-  "description": "Nodejs driver for Domino nsf databases",
+  "version": "0.0.4",
+  "description": "Node.js driver for Domino nsf databases",
   "homepage": "https://github.com/nthjelme/nodejs-domino",
   "private": true,
   "gypfile": true,
@@ -15,8 +15,12 @@
     "nosql",
     "nsf"
   ],
-  "os": ["win32"],
-  "cpu": ["ia32"],
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "ia32"
+  ],
   "license": "MIT",
   "main": "index.js",
   "author": {
@@ -30,7 +34,11 @@
     }
   ],
   "repository": {
-    "type" : "git",
-    "url" : "https://github.com/nthjelme/nodejs-domino.git"
+    "type": "git",
+    "url": "https://github.com/nthjelme/nodejs-domino.git"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "mocha": "^3.1.2"
   }
 }
