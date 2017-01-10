@@ -28,7 +28,13 @@
 #define ASYNC_DOCUMENT_ASYNC_H_
 
 #include <nan.h>
+#include "global.h"
+#include "ItemValue.h"
 
 NAN_METHOD(GetDocumentAsync);
+
+STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr, WORD name_len, void far *item_valu, DWORD item_value_len, void far *docRef);
+char * GetAPIError(STATUS api_error);
+
 
 #endif  // ASYNC_DOCUMENT_ASYNC_H_

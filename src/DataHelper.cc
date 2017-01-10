@@ -1,10 +1,10 @@
 #include "DataHelper.h"
 
 
-Local<Object> DataHelper::getV8Data(std::map <std::string, ItemValue> doc) {
+Local<Object> DataHelper::getV8Data(std::map <std::string, ItemValue> *doc) {
 	Local<Object> resDoc = Nan::New<Object>();
 	std::map<std::string, ItemValue>::iterator it;
-	for (it = doc.begin(); it != doc.end(); it++)
+	for (it = doc->begin(); it != doc->end(); it++)
 	{
 		ItemValue value = it->second;
 		

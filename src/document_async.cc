@@ -28,12 +28,10 @@
 #include "document_async.h"
 #include "ItemValue.h"
 #include "DataHelper.h"
-#include <lncppapi.h>
 #include <iostream>
 #include <map>
 #include <iterator>
 #include <vector>
-#include <osmisc.h>
 
 using v8::Function;
 using v8::Local;
@@ -50,90 +48,103 @@ using Nan::New;
 using Nan::Null;
 using Nan::To;
 
+NOTEHANDLE   note_handle;
+std::map <std::string, ItemValue> doc2;
 
+char * GetAPIError(STATUS api_error)
+
+{
+	STATUS  string_id = ERR(api_error);
+	char    error_text[200];
+	WORD    text_len;
+
+	/* Get the message for this IBM C API for Notes/Domino error code
+	from the resource string table. */
+
+	text_len = OSLoadString(NULLHANDLE,
+		string_id,
+		error_text,
+		sizeof(error_text));
+	return error_text;
+	/* Print it. */
+	//fprintf(stderr, "\nERROR: %s\n", error_text);
+
+}
 
 class DocumentWorker : public AsyncWorker {
 public:
 	DocumentWorker(Callback *callback, std::string serverName, std::string dbName, std::string unid)
-		: AsyncWorker(callback), serverName(serverName), dbName(dbName), unid(unid),doc(){}
+		: AsyncWorker(callback), serverName(serverName), dbName(dbName), unid(unid){}
 	~DocumentWorker() {}
-
+	
+	
 	// Executed inside the worker-thread.
 	// It is not safe to access V8, or V8 data structures
 	// here, so everything we need for input and output
 	// should go on `this`.
 	void Execute() {
-		LNSetThrowAllErrors(TRUE);
-		LNNotesSession session;
-		try {					
-			session.InitThread();			
-			LNString                DbTitle = "";			
-			LNItemArray items;
-			LNDatabase Db;
-			session.GetDatabase(dbName.c_str(), &Db, serverName.c_str());			
-			Db.Open();
-			
-			const LNString * lnstrUNID = new LNString(unid.c_str());
+		char       *db_filename;    /* pathname of source database */
+		DBHANDLE    db_handle;      /* handle of source database */
+		UNID temp_unid;
+		STATUS   error = NOERROR;           /* return status from API calls */
 
-			//Get UNID *
-			LNUniversalID * lnUNID = new LNUniversalID(*lnstrUNID);
-			const UNIVERSALNOTEID * unidUNID = lnUNID->GetUniversalID();
-			LNDocument			  Doc;
-			Db.GetDocument(unidUNID, &Doc);
-			Doc.Open();
-			Doc.GetItems(&items);
-						
-			doc.insert(std::make_pair("@unid", ItemValue(unid)));
-
-			LNINT i;
-			for (i = 0; i < Doc.GetItemCount(); i++) {
-				LNItem item = items[i];
-
-				LNITEMTYPE type = item.GetType();
-				LNString itemName = item.GetName();
-				std::string iName = itemName;
-
-				if (type == LNITEMTYPE_RICHTEXT) {
-					
-					LNRichText rt = (LNRichText)item;	
-					LNString rtText;										
-					LNRTCursor beginCursor;
-					LNRTCursor endCursor;
-					rt.GetCursor(&beginCursor);
-					rt.GetEndCursor(&endCursor);
-					std::string rtString;
-					LNSTATUS status = LNWARN_TOO_MUCH_TEXT;
-					while (status == LNWARN_TOO_MUCH_TEXT) {
-						//TODO: LNStringtranlsate seems removes text from end, find another solution.
-						status = rt.GetText(beginCursor, endCursor, &rtText, &beginCursor);						
-						LNINT bufLength = rtText.GetLength();
-						rtString = rtText;						
-						char *buf = (char *)malloc(sizeof(char) *bufLength + 1);
-						LNStringTranslate(rtText, LNCHARSET_UTF8, bufLength, buf);
-						//OSTranslate(OS_TRANSLATE_LMBCS_TO_UTF8, rtText.GetTextPtr(), bufLength, buf, bufLength);
-						rtString.append(buf);	
-						free(buf);
-					} 										
-					doc.insert(std::make_pair(iName, ItemValue(rtString)));
-					
-				}
-				else {					
-					doc.insert(std::make_pair(iName, ItemValue(&item)));
-				}
-			}		
-			std::map<std::string, ItemValue>::iterator it;
-			
-			session.TermThread();
-			}
-		catch (LNSTATUS Lnerror) {
-			char ErrorBuf[512];
-			LNGetErrorMessage(Lnerror, ErrorBuf, 512);			
-			if (session.IsInitialized()) {
-				session.TermThread();
-			}
-			SetErrorMessage(ErrorBuf);
+		if (error = NotesInitThread())
+		{
+			SetErrorMessage(GetAPIError(error));
 		}
+
+		if (error = NSFDbOpen(dbName.c_str(), &db_handle))
+		{
+			SetErrorMessage(GetAPIError(error));
+			NotesTerm();
+		}
+
+		char unid_buffer[33];
+		strncpy(unid_buffer, unid.c_str(), 32);
+		unid_buffer[32] = '\0';
+
+		if (strlen(unid_buffer) == 32)
+		{
+			/* Note part second, reading backwards in buffer */
+			temp_unid.Note.Innards[0] = (DWORD)strtoul(unid_buffer + 24, NULL, 16);
+			unid_buffer[24] = '\0';
+			temp_unid.Note.Innards[1] = (DWORD)strtoul(unid_buffer + 16, NULL, 16);
+			unid_buffer[16] = '\0';
+
+			/* DB part first */
+			temp_unid.File.Innards[0] = (DWORD)strtoul(unid_buffer + 8, NULL, 16);
+			unid_buffer[8] = '\0';
+			temp_unid.File.Innards[1] = (DWORD)strtoul(unid_buffer, NULL, 16);
+		}
+
+		if (error = NSFNoteOpenByUNID(
+			db_handle,  /* database handle */
+			&temp_unid, /* note ID */
+			(WORD)0,                      /* open flags */
+			&note_handle))          /* note handle (return) */
+		{
+			SetErrorMessage(GetAPIError(error));
+		}
+
+
+		if (error = NSFItemScan(
+			note_handle,	/* note handle */
+			field_actions,	/* action routine for fields */
+			&note_handle))	/* argument to action routine */
+
+		{					
+			SetErrorMessage(GetAPIError(error));
+		}
+
+		if (error = NSFDbClose(db_handle))
+		{
+			SetErrorMessage(GetAPIError(error));
+		}
+
+		NotesTermThread();
+		
 	}
+
 
 	
 	// Executed when the async work is complete
@@ -141,7 +152,7 @@ public:
 	// so it is safe to use V8 again
 	void HandleOKCallback() {
 		HandleScope scope;
-		Local<Object> resDoc = DataHelper::getV8Data(doc);
+		Local<Object> resDoc = DataHelper::getV8Data(&doc2);
 		Local<Value> argv[] = {
 			Null()
 			, resDoc
@@ -153,7 +164,7 @@ public:
 	void HandleErrorCallback() {
 		HandleScope scope;
 		Local<Object> errorObj = Nan::New<Object>();
-		Nan::Set(errorObj, New<v8::String>("errorMessage").ToLocalChecked(), New<v8::String>(ErrorMessage()).ToLocalChecked());
+		Nan::Set(errorObj, New<v8::String>("errorMessage").ToLocalChecked(), New<v8::String>(this->ErrorMessage()).ToLocalChecked());
 		Local<Value> argv[] = {
 			errorObj,
 			Null()
@@ -165,9 +176,78 @@ private:
 	std::string serverName;
 	std::string dbName;
 	std::string unid;	
-	std::map <std::string, ItemValue> doc;
+	std::map <std::string, ItemValue> *doc;	
 };
 
+
+
+STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr, WORD name_len, void far *item_valu, DWORD item_value_len, void far *note_handle2) {
+	WORD         field_len;
+	char         field_text[132000];
+	STATUS		error = NOERROR;
+	NUMBER       number_field;
+
+	BLOCKID                bidLinksItem;
+	DWORD                  dwLinksValueLen;
+	BLOCKID                bidLinksValue;
+	WORD                   item_type;
+
+	char *field_name = (char*)malloc(name_len + 1);
+	if (field_name) {
+		
+		memcpy(field_name, name_ptr, name_len);
+		field_name[name_len] = '\0';
+	}
+	
+	if (error = NSFItemInfo(note_handle, field_name,
+		strlen(field_name), &bidLinksItem,
+		&item_type, &bidLinksValue,
+		&dwLinksValueLen)) {
+		
+		return (ERROR);
+	}
+	if (item_type == TYPE_TEXT) {
+
+		field_len = NSFItemGetText(
+			note_handle,
+			field_name,
+			field_text,
+			(WORD) sizeof(field_text));
+
+		char buf[132000];
+		OSTranslate(OS_TRANSLATE_LMBCS_TO_UTF8, field_text, 132000, buf, 132000);
+		doc2.insert(std::make_pair(field_name, ItemValue(buf)));
+
+	}
+	else if (item_type == TYPE_TEXT_LIST) {
+		std::vector<std::string> vectorStrValue;
+		WORD num_entries = NSFItemGetTextListEntries(note_handle,
+			field_name);
+		for (int counter = 0; counter < num_entries; counter++)
+		{
+			field_len = NSFItemGetTextListEntry(note_handle,
+				field_name, counter, field_text, LINEOTEXT - 1);
+			//text_buf2[text_len] = '\0';
+			char buf[132000];
+			OSTranslate(OS_TRANSLATE_LMBCS_TO_UTF8, field_text, 132000, buf, 132000);
+			vectorStrValue.push_back(buf);
+			//printf("%s[%u]: %s\n", TEXT_LIST_ITEM, counter, text_buf2);
+		}
+		doc2.insert(std::make_pair(field_name, ItemValue(vectorStrValue)));
+		printf("%s is array type\n", field_name);
+	}
+	else if (item_type == TYPE_NUMBER) {
+		NSFItemGetNumber(
+			note_handle,
+			field_name,
+			&number_field);
+		doc2.insert(std::make_pair(field_name, ItemValue((double)number_field)));
+		
+	}
+
+	return(NOERROR);
+
+}
 
 NAN_METHOD(GetDocumentAsync) {
 	v8::Isolate* isolate = info.GetIsolate();

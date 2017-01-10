@@ -49,7 +49,7 @@ using Nan::To;
 
 class DataHelper {
 public:
-	static Local<Object> getV8Data(std::map <std::string, ItemValue> doc);
+	static Local<Object> getV8Data(std::map <std::string, ItemValue> *doc);
 	static Local<Array> getV8Data(std::vector <std::map<std::string, ItemValue>> viewResult);
 };
 

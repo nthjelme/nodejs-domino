@@ -207,7 +207,7 @@ public:
 
 	void HandleOKCallback() {
 		HandleScope scope;
-		Local<Object> resDoc = DataHelper::getV8Data(doc);			
+		Local<Object> resDoc = DataHelper::getV8Data(&doc);			
 		Local<Value> argv[] = {
 			Null()
 			, resDoc

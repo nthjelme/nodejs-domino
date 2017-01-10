@@ -26,14 +26,7 @@
 
 #include <nan.h>
 #include "document_async.h"  
-#include "view_async.h"
-#include "save_document_async.h"
-#include "delete_document_async.h"
-#include "replicate_database_async.h"
-#include "makeresponse_document.h"
-#include "getresponse_documents.h"
 #include <iostream>
-#include <lncppapi.h>
 
 using v8::FunctionTemplate;
 using v8::Handle;
@@ -44,29 +37,29 @@ using Nan::GetFunction;
 using Nan::New;
 using Nan::Set;
 
-LNNotesSession session; // session as a global, should maby be in a Persist object?
+//LNNotesSession session; // session as a global, should maby be in a Persist object?
 
 void InitDominoSession(const Nan::FunctionCallbackInfo<v8::Value>& info) { 
 	char *argv[] = { "./addon" };
-	session.Init(1, argv);	
+	STATUS error;
+	if (error = NotesInitExtended(1, argv))	{
+		printf("\n Unable to initialize Notes.\n");
+
+	}	
 }
 
 void TermDominoSession(const Nan::FunctionCallbackInfo<v8::Value>& info) {	
-	if (session.IsInitialized()) {
-		session.Term();
-	}
+	NotesTerm();
 }
 
 static void termAtExitDominoSession(void*) {	
-	if (session.IsInitialized()) {
-		session.Term();
-	}
+	NotesTerm();
 
 }
 NAN_MODULE_INIT(InitAll) {	
 	Set(target, New<String>("getDocumentAsync").ToLocalChecked(),
 	  GetFunction(New<FunctionTemplate>(GetDocumentAsync)).ToLocalChecked());
-
+	/*
 	Set(target, New<String>("saveDocumentAsync").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(SaveDocumentAsync)).ToLocalChecked());
 
@@ -84,13 +77,15 @@ NAN_MODULE_INIT(InitAll) {
 
 	Set(target, New<String>("getViewAsync").ToLocalChecked(),
 	  GetFunction(New<FunctionTemplate>(GetViewAsync)).ToLocalChecked());
-
+	  */
 	Set(target, Nan::New("initSession").ToLocalChecked(),
 	  Nan::New<v8::FunctionTemplate>(InitDominoSession)->GetFunction());
-
+	
 	Set(target, Nan::New("termSession").ToLocalChecked(),
 		Nan::New<v8::FunctionTemplate>(TermDominoSession)->GetFunction());
+	
 	AtExit(termAtExitDominoSession);
+	
 }
 
 NODE_MODULE(addon, InitAll)
