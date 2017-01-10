@@ -28,6 +28,7 @@
 #include "document_async.h"
 #include "ItemValue.h"
 #include "DataHelper.h"
+#include <time.h>
 #include <iostream>
 #include <map>
 #include <iterator>
@@ -102,7 +103,7 @@ public:
 		char unid_buffer[33];
 		strncpy(unid_buffer, unid.c_str(), 32);
 		unid_buffer[32] = '\0';
-
+		doc2.insert(std::make_pair("@unid", ItemValue(unid)));
 		if (strlen(unid_buffer) == 32)
 		{
 			/* Note part second, reading backwards in buffer */
@@ -243,6 +244,40 @@ STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr
 			&number_field);
 		doc2.insert(std::make_pair(field_name, ItemValue((double)number_field)));
 		
+	}
+	else if (item_type == TYPE_TIME) {
+		TIMEDATE time_date;
+		if (NSFItemGetTime(note_handle,
+			field_name,
+			&time_date)) {
+			TIME tid;
+			struct tm * timeinfo;
+
+			tid.GM = time_date;
+			tid.zone = 0;
+			tid.dst = 0;
+			TimeGMToLocalZone(&tid);			
+
+			time_t rawtime = time(0);
+			timeinfo = localtime(&rawtime);			
+			timeinfo->tm_year = tid.year - 1900;
+			timeinfo->tm_mon = tid.month-1;
+			timeinfo->tm_mday = tid.day;
+
+			timeinfo->tm_hour = tid.hour;
+			timeinfo->tm_min = tid.minute-1;
+			timeinfo->tm_sec = tid.second-1;
+			
+			double dtime = mktime(timeinfo);
+			
+			double dateTimeValue = dtime * 1000; // convert to double time
+			ItemValue iv = ItemValue();
+			iv.dateTimeValue = dateTimeValue;
+			iv.type = 3;
+			doc2.insert(std::make_pair(field_name, iv));
+		}
+
+
 	}
 
 	return(NOERROR);
