@@ -52,25 +52,6 @@ using Nan::To;
 NOTEHANDLE   note_handle;
 std::map <std::string, ItemValue> doc2;
 
-char * GetAPIError(STATUS api_error)
-
-{
-	STATUS  string_id = ERR(api_error);
-	char    error_text[200];
-	WORD    text_len;
-
-	/* Get the message for this IBM C API for Notes/Domino error code
-	from the resource string table. */
-
-	text_len = OSLoadString(NULLHANDLE,
-		string_id,
-		error_text,
-		sizeof(error_text));
-	return error_text;
-	/* Print it. */
-	//fprintf(stderr, "\nERROR: %s\n", error_text);
-
-}
 
 class DocumentWorker : public AsyncWorker {
 public:
@@ -91,12 +72,12 @@ public:
 
 		if (error = NotesInitThread())
 		{
-			SetErrorMessage(GetAPIError(error));
+			SetErrorMessage(DataHelper::GetAPIError(error));
 		}
 
 		if (error = NSFDbOpen(dbName.c_str(), &db_handle))
 		{
-			SetErrorMessage(GetAPIError(error));
+			SetErrorMessage(DataHelper::GetAPIError(error));
 			NotesTerm();
 		}
 
@@ -124,7 +105,7 @@ public:
 			(WORD)0,                      /* open flags */
 			&note_handle))          /* note handle (return) */
 		{
-			SetErrorMessage(GetAPIError(error));
+			SetErrorMessage(DataHelper::GetAPIError(error));
 		}
 
 
@@ -134,12 +115,12 @@ public:
 			&note_handle))	/* argument to action routine */
 
 		{					
-			SetErrorMessage(GetAPIError(error));
+			SetErrorMessage(DataHelper::GetAPIError(error));
 		}
 
 		if (error = NSFDbClose(db_handle))
 		{
-			SetErrorMessage(GetAPIError(error));
+			SetErrorMessage(DataHelper::GetAPIError(error));
 		}
 
 		NotesTermThread();
@@ -194,8 +175,7 @@ STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr
 	WORD                   item_type;
 
 	char *field_name = (char*)malloc(name_len + 1);
-	if (field_name) {
-		
+	if (field_name) {		
 		memcpy(field_name, name_ptr, name_len);
 		field_name[name_len] = '\0';
 	}
@@ -215,8 +195,8 @@ STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr
 			field_text,
 			(WORD) sizeof(field_text));
 
-		char buf[132000];
-		OSTranslate(OS_TRANSLATE_LMBCS_TO_UTF8, field_text, 132000, buf, 132000);
+		char buf[MAXWORD];
+		OSTranslate(OS_TRANSLATE_LMBCS_TO_UTF8, field_text, MAXWORD, buf, MAXWORD);
 		doc2.insert(std::make_pair(field_name, ItemValue(buf)));
 
 	}
@@ -229,13 +209,11 @@ STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr
 			field_len = NSFItemGetTextListEntry(note_handle,
 				field_name, counter, field_text, LINEOTEXT - 1);
 			//text_buf2[text_len] = '\0';
-			char buf[132000];
-			OSTranslate(OS_TRANSLATE_LMBCS_TO_UTF8, field_text, 132000, buf, 132000);
-			vectorStrValue.push_back(buf);
-			//printf("%s[%u]: %s\n", TEXT_LIST_ITEM, counter, text_buf2);
+			char buf[MAXWORD];
+			OSTranslate(OS_TRANSLATE_LMBCS_TO_UTF8, field_text, MAXWORD, buf, MAXWORD);
+			vectorStrValue.push_back(buf);			
 		}
-		doc2.insert(std::make_pair(field_name, ItemValue(vectorStrValue)));
-		printf("%s is array type\n", field_name);
+		doc2.insert(std::make_pair(field_name, ItemValue(vectorStrValue)));		
 	}
 	else if (item_type == TYPE_NUMBER) {
 		NSFItemGetNumber(
