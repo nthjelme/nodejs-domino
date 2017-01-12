@@ -26,6 +26,7 @@
 
 #include <nan.h>
 #include "document_async.h"  
+#include "save_document_async.h"  
 #include <iostream>
 
 using v8::FunctionTemplate;
@@ -59,10 +60,10 @@ static void termAtExitDominoSession(void*) {
 NAN_MODULE_INIT(InitAll) {	
 	Set(target, New<String>("getDocumentAsync").ToLocalChecked(),
 	  GetFunction(New<FunctionTemplate>(GetDocumentAsync)).ToLocalChecked());
-	/*
+	
 	Set(target, New<String>("saveDocumentAsync").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(SaveDocumentAsync)).ToLocalChecked());
-
+	/*
 	Set(target, New<String>("deleteDocumentAsync").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(DeleteDocumentAsync)).ToLocalChecked());
 	

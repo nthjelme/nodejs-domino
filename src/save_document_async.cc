@@ -35,6 +35,7 @@
 #include <vector>
 #include <osmisc.h>
 #include <ctime>
+#include <stdio.h>
 
 using v8::Function;
 using v8::Local;
@@ -51,6 +52,7 @@ using Nan::New;
 using Nan::Null;
 using Nan::To;
 
+
 class SaveDocumentWorker : public AsyncWorker {
 public:
 	SaveDocumentWorker(Callback *callback, std::string serverName, std::string dbName, std::map <std::string, ItemValue> doc)
@@ -62,150 +64,172 @@ public:
 	// here, so everything we need for input and output
 	// should go on `this`.
 	void Execute() {
-		LNSetThrowAllErrors(TRUE);
-		LNNotesSession session;
-		try {
-			
-			session.InitThread();
 
-			LNDatabase Db;
-			LNDocument			  NewDoc;
-			BOOLEAN isEdit = false;
-			
-			session.GetDatabase(dbName.c_str(), &Db, serverName.c_str());
-			Db.Open();
+		char       *db_filename;    /* pathname of source database */
+		DBHANDLE    db_handle;      /* handle of source database */
+		UNID temp_unid;
+		OID tempOID;
+		STATUS   error = NOERROR;           /* return status from API calls */
+		BOOLEAN isEdit = false;
+		NOTEHANDLE   note_handle2;
 
-			std::map<std::string, ItemValue>::iterator iter;
-			iter = doc.find("@unid");
-			if (iter!=doc.end()) {
-				isEdit = true;
-				ItemValue unidItem = iter->second;				
-				const char * chrUNID = unidItem.stringValue.c_str();
-				const LNString * lnstrUNID = new LNString(chrUNID);
-				LNUniversalID * lnUNID = new LNUniversalID(*lnstrUNID);
-				const UNIVERSALNOTEID * unidUNID = lnUNID->GetUniversalID();
-				Db.GetDocument(unidUNID, &NewDoc);				
-				isEdit = true;
-
-				// remove @unid from map
-				doc.erase(iter);
-			} else {
-				Db.CreateDocument(&NewDoc);				
-			}
-			NewDoc.Open(LNNOTEOPENFLAGS_DEFAULT);
-			std::map<std::string, ItemValue>::iterator it;
-			for (it = doc.begin(); it != doc.end(); it++)
-			{
-				ItemValue value = it->second;				
-				if (value.type == 0) {
-					LNNumbers item = LNNumbers();
-					if (isEdit) {
-						if (NewDoc.HasItem(it->first.c_str())) {
-							NewDoc.GetItem(it->first.c_str(), &item);
-						}
-						else {
-							NewDoc.CreateItem(it->first.c_str(), &item);
-						}
-					}
-					else {
-						NewDoc.CreateItem(it->first.c_str(), &item);
-					}
-
-					LNNumber lnvalue = value.numberValue;
-					item.SetValue(lnvalue);
-				}
-				else if(value.type == 1) {
-					LNText item = LNText();
-					if (isEdit) {
-						if (NewDoc.HasItem(it->first.c_str())) {
-							NewDoc.GetItem(it->first.c_str(), &item);
-						}
-						else {
-							NewDoc.CreateItem(it->first.c_str(), &item);
-						}
-					}
-					else {
-						NewDoc.CreateItem(it->first.c_str(), &item);
-					}
-					LNString valStr;
-					LNStringTranslate(value.stringValue.c_str(), LNCHARSET_UTF8,&valStr);
-					
-					item.SetValue(valStr);
-				}
-				else if (value.type == 2) {
-					LNText item = LNText();
-					if (isEdit) {
-						if (NewDoc.HasItem(it->first.c_str())) {
-							NewDoc.GetItem(it->first.c_str(), &item);
-							item.DeleteAll();
-						}
-						else {
-							NewDoc.CreateItem(it->first.c_str(), &item);
-						}
-					}
-					else {
-						NewDoc.CreateItem(it->first.c_str(), &item);
-					}
-					size_t ii;
-					for (ii = 0; ii < value.vectorStrValue.size(); ii++) {						
-						LNString val;
-						LNStringTranslate(value.vectorStrValue[ii].c_str(), LNCHARSET_UTF8, &val);
-						item.Append(val);
-					}
-
-				}
-				else if (value.type == 3) {					
-					LNDatetimes item = LNDatetimes();					
-					LNDatetime dt = LNDatetime();				
-
-					try {
-						std::time_t t = static_cast<time_t>(value.dateTimeValue / 1000);
-						struct tm* ltime = localtime(&t);
-						int year = ltime->tm_year + 1900;
-						int month = ltime->tm_mon + 1;
-						int day = ltime->tm_mday;
-						int hour = ltime->tm_hour+1;
-						int minute = ltime->tm_min+1;
-						int second = ltime->tm_sec+1;
-						dt.SetDate(month, day, year);
-						dt.SetTime(hour, minute, second);
-						
-						if (isEdit) {
-							if (NewDoc.HasItem(it->first.c_str())) {
-								NewDoc.GetItem(it->first.c_str(), &item);
-								item.DeleteAll();
-							}
-							else {
-								NewDoc.CreateItem(it->first.c_str(), &item);
-							}
-						} else {
-							NewDoc.CreateItem(it->first.c_str(), &item);
-						}
-						item.SetValue(dt);
-					}
-					catch (...) {
-						SetErrorMessage("Error creating date struct");
-					}					
-				}
-			}
-
-			NewDoc.Save();
-			UNIVERSALNOTEID *noteid = NewDoc.GetUniversalID();
-			LNUniversalID lnUnid = LNUniversalID(noteid);			
-			LNString unidStr = lnUnid.GetText();			
-			doc.insert(std::make_pair("@unid", ItemValue(unidStr.GetTextPtr())));
-			session.TermThread();
-		} catch (LNSTATUS Lnerror) {
-			char ErrorBuf[512];
-			LNGetErrorMessage(Lnerror, ErrorBuf, 512);
-			if (session.IsInitialized()) {
-				session.TermThread();
-			}
-			SetErrorMessage(ErrorBuf);
+		if (error = NotesInitThread())
+		{			
+			SetErrorMessage(DataHelper::GetAPIError(error));
 		}
+
+		if (error = NSFDbOpen(dbName.c_str(), &db_handle))
+		{		
+			SetErrorMessage(DataHelper::GetAPIError(error));
+		}
+
+		std::map<std::string, ItemValue>::iterator iter;
+		iter = doc.find("@unid");
+		if (iter != doc.end()) {
+			// edit document
+			
+			isEdit = true;
+			ItemValue unidItem = iter->second;
+			const char * chrUNID = unidItem.stringValue.c_str();
+			char unid_buffer[33];
+			strncpy(unid_buffer, chrUNID, 32);
+			unid_buffer[32] = '\0';			
+			if (strlen(unid_buffer) == 32)
+			{
+				/* Note part second, reading backwards in buffer */
+				temp_unid.Note.Innards[0] = (DWORD)strtoul(unid_buffer + 24, NULL, 16);
+				unid_buffer[24] = '\0';
+				temp_unid.Note.Innards[1] = (DWORD)strtoul(unid_buffer + 16, NULL, 16);
+				unid_buffer[16] = '\0';
+
+				/* DB part first */
+				temp_unid.File.Innards[0] = (DWORD)strtoul(unid_buffer + 8, NULL, 16);
+				unid_buffer[8] = '\0';
+				temp_unid.File.Innards[1] = (DWORD)strtoul(unid_buffer, NULL, 16);
+			}
+			
+			if (error = NSFNoteOpenByUNID(
+				db_handle,  /* database handle */
+				&temp_unid, /* note ID */
+				(WORD)0,                      /* open flags */
+				&note_handle2))          /* note handle (return) */
+			{			
+				printf("error opening document\n");
+				SetErrorMessage(DataHelper::GetAPIError(error));
+			}
+		}
+		else {
+			//create new document			
+			if (error = NSFNoteCreate(db_handle, &note_handle2)) {				
+				SetErrorMessage(DataHelper::GetAPIError(error));
+			}
+
+		}
+
+		std::map<std::string, ItemValue>::iterator it;
+		for (it = doc.begin(); it != doc.end(); it++)
+		{
+			ItemValue value = it->second;
+			if (value.type == 0) {
+				if (error = NSFItemSetNumber(note_handle2, it->first.c_str(), &value.numberValue))
+				{
+					SetErrorMessage("Error writing numberitem");
+				}
+			}
+			else if (value.type == 1) {
+				// text			
+				
+				char buf[MAXWORD];
+				OSTranslate(OS_TRANSLATE_UTF8_TO_LMBCS, value.stringValue.c_str(), MAXWORD, buf, MAXWORD);
+				if (error = NSFItemSetText(note_handle2,
+					it->first.c_str(),
+					buf,
+					MAXWORD))
+				{					
+					SetErrorMessage(DataHelper::GetAPIError(error));
+				}
+				
+			}
+			else if (value.type == 2) {
+				// text list
+				char buf[MAXWORD];
+				
+				size_t ii;
+				for (ii = 0; ii < value.vectorStrValue.size(); ii++) {
+					OSTranslate(OS_TRANSLATE_UTF8_TO_LMBCS, value.vectorStrValue[ii].c_str(), MAXWORD, buf, MAXWORD);
+					if (ii == 0) {						
+						if (error = NSFItemCreateTextList(note_handle2,
+							it->first.c_str(),
+							buf,
+							MAXWORD))
+						{
+							SetErrorMessage(DataHelper::GetAPIError(error));
+						}
+					}
+					else {
+						if (error = NSFItemAppendTextList(note_handle2,
+							it->first.c_str(),
+							buf,
+							MAXWORD,
+							TRUE))
+						{
+							SetErrorMessage(DataHelper::GetAPIError(error));
+						}
+					}
+				}
+
+				
+			}
+			else if (value.type == 3) {
+				// datetime
+				TIME tid;
+				
+				std::time_t t = static_cast<time_t>(value.dateTimeValue / 1000);
+				struct tm* ltime = localtime(&t);				 
+				tid.year = ltime->tm_year + 1900;
+				tid.month = ltime->tm_mon + 1;
+				tid.day = ltime->tm_mday;
+				tid.hour = ltime->tm_hour;
+				tid.minute = ltime->tm_min + 1;
+				tid.second = ltime->tm_sec + 1;
+				tid.zone = 0;
+				tid.dst = 0;
+				tid.hundredth = 0;
+				
+				if (error = TimeLocalToGM(&tid)) {
+					SetErrorMessage("error converting date object\n");					
+				}				
+
+				if (error = NSFItemSetTime(note_handle2, it->first.c_str(), &tid.GM))
+				{
+					SetErrorMessage("error adding date item\n");
+				}
+			}
+
+		}
+		
+		if (error = NSFNoteUpdate(note_handle2, 0)) {
+			SetErrorMessage(DataHelper::GetAPIError(error));
+		}
+
+		NSFNoteGetInfo(note_handle2, _NOTE_OID, &tempOID);
+		char unid_buffer[33];
+		snprintf(unid_buffer, 33, "%08X%08X%08X%08X", tempOID.File.Innards[1], tempOID.File.Innards[0], tempOID.Note.Innards[1], tempOID.Note.Innards[0]);
+		
+		doc.insert(std::make_pair("@unid", ItemValue(unid_buffer)));
+		if (error = NSFNoteClose(note_handle2))
+		{			
+			SetErrorMessage(DataHelper::GetAPIError(error));
+		}
+		if (error = NSFDbClose(db_handle))
+		{			
+			SetErrorMessage(DataHelper::GetAPIError(error));
+		}		
+		NotesTermThread();
+
 	}
 
-	void HandleOKCallback() {
+	void HandleOKCallback() {		
 		HandleScope scope;
 		Local<Object> resDoc = DataHelper::getV8Data(&doc);			
 		Local<Value> argv[] = {
@@ -265,7 +289,7 @@ NAN_METHOD(SaveDocumentAsync) {
 		
 		if (val->IsString()) {
 			String::Utf8Value value(val->ToString());
-			std::string valueStr = std::string(*value);
+			std::string valueStr = std::string(*value);			
 			doc.insert(std::make_pair(key, ItemValue(std::string(*value))));			
 		} else if (val->IsArray()) {			
 			Local<Array> arrVal = Local<Array>::Cast(val);
