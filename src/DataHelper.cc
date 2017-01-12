@@ -32,6 +32,24 @@ Local<Object> DataHelper::getV8Data(std::map <std::string, ItemValue> *doc) {
 	return resDoc;
 }
 
+char * DataHelper::GetAPIError(STATUS api_error)
+{
+	STATUS  string_id = ERR(api_error);
+	char    error_text[200];
+	WORD    text_len;
+
+	/* Get the message for this IBM C API for Notes/Domino error code
+	from the resource string table. */
+
+	text_len = OSLoadString(NULLHANDLE,
+		string_id,
+		error_text,
+		sizeof(error_text));
+	return error_text;
+
+
+}
+
 Local<Array> DataHelper::getV8Data(std::vector <std::map<std::string, ItemValue>> viewResult) {
 
 	Local<Array> viewRes = New<Array>(viewResult.size());
