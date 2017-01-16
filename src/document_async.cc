@@ -78,7 +78,7 @@ public:
 		if (error = NSFDbOpen(dbName.c_str(), &db_handle))
 		{
 			SetErrorMessage(DataHelper::GetAPIError(error));
-			NotesTerm();
+			NotesTermThread();
 		}
 
 		char unid_buffer[33];
