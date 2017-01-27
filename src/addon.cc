@@ -27,6 +27,7 @@
 #include <nan.h>
 #include "document_async.h"  
 #include "save_document_async.h"  
+#include "view_async.h"
 #include <iostream>
 
 using v8::FunctionTemplate;
@@ -75,10 +76,10 @@ NAN_MODULE_INIT(InitAll) {
 
 	Set(target, New<String>("replicateDatabaseAsync").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(ReplicateDatabaseAsync)).ToLocalChecked());
-
+		*/
 	Set(target, New<String>("getViewAsync").ToLocalChecked(),
 	  GetFunction(New<FunctionTemplate>(GetViewAsync)).ToLocalChecked());
-	  */
+	
 	Set(target, Nan::New("initSession").ToLocalChecked(),
 	  Nan::New<v8::FunctionTemplate>(InitDominoSession)->GetFunction());
 	
