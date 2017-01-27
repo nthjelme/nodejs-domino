@@ -34,6 +34,7 @@
 #include <map>
 #include <iterator>
 #include <vector>
+#include <global.h>
 
 #include "ItemValue.h"
 
