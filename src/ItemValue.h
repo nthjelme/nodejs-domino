@@ -28,7 +28,6 @@
 #define ITEM_VALUE_H_
 
 #include <nan.h>
-#include <lncppapi.h>
 #include <ctime>
 #include <time.h>
 
@@ -47,15 +46,12 @@ public:
 		type = 2;
 		vectorStrValue = vecS;
 	}
-	ItemValue(double t,int ty) {
+	ItemValue(double t, int ty) {
 		type = 3;
 		dateTimeValue = t;
 
 	}
-	ItemValue(LNItem *item);	
-	void TextItem(LNItem *item);
-	void DateValue(LNDatetime * date);
-
+	
 	int type;
 	double numberValue;
 	double dateTimeValue;
