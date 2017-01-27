@@ -28,6 +28,12 @@
 #include "document_async.h"
 #include "ItemValue.h"
 #include "DataHelper.h"
+#include <nsfdb.h>
+#include <nif.h>
+#include <nsfnote.h>
+#include <osmisc.h>
+#include <textlist.h>
+#include <osmem.h>
 #include <time.h>
 #include <iostream>
 #include <map>
@@ -207,7 +213,7 @@ STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr
 		for (int counter = 0; counter < num_entries; counter++)
 		{
 			field_len = NSFItemGetTextListEntry(note_handle,
-				field_name, counter, field_text, LINEOTEXT - 1);
+				field_name, counter, field_text, (WORD)(sizeof(field_text) - 1));
 			//text_buf2[text_len] = '\0';
 			char buf[MAXWORD];
 			OSTranslate(OS_TRANSLATE_LMBCS_TO_UTF8, field_text, MAXWORD, buf, MAXWORD);
