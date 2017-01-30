@@ -98,8 +98,7 @@ value of item #3
 	USHORT      NameLength;         /* length of item name w/out terminator*/
 	USHORT      ValueLength;        /* length of item value, incl. type */
 	WORD        DataType;           /* item data type word */
-	char       *szDataType;         /* printable data type name */
-	USHORT      TextLen;            /* length of printable item text */
+	
 	USHORT      i;                  /* counter for loop over items */
 	ITEM    Items[MAX_ITEMS];       /* Stores the array of ITEMs */
 	char    ItemText[MAX_ITEM_LEN]; /* Text rendering of item value */
@@ -212,7 +211,7 @@ value of item #3
 			timeinfo->tm_hour = tid.hour;
 			timeinfo->tm_min = tid.minute - 1;
 			timeinfo->tm_sec = tid.second - 1;
-			dtime = mktime(timeinfo);
+			dtime = static_cast<double>(mktime(timeinfo));
 
 			dateTimeValue = dtime * 1000; // convert to double time
 			iv = ItemValue();
@@ -269,18 +268,19 @@ public:
 		WORD        SignalFlag;          /* signal and share warning flags */
 		DWORD       i;                   /* a counter */
 		STATUS      error = NOERROR;     /* return status from API calls */
-
+		char *error_text = (char *) malloc(sizeof(char) * 200);   
+		
 		if (error = NotesInitThread())
-		{
-			printf("init\n");
-			SetErrorMessage(DataHelper::GetAPIError(error));
+		{			
+			DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage(error_text);
 			return;
 		}
 
 		if (error = NSFDbOpen(dbName.c_str(), &hDB))
 		{
-			printf("opendb\n");
-			SetErrorMessage(DataHelper::GetAPIError(error));
+			DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage(error_text);
 			NotesTermThread();
 			return;
 		}
@@ -291,7 +291,8 @@ public:
 			&ViewID))
 		{		
 			printf("niffindview\n");
-			SetErrorMessage(DataHelper::GetAPIError(error));
+			DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage(error_text);
 			NSFDbClose(hDB);
 			NotesTermThread();
 			return;
@@ -311,7 +312,8 @@ public:
 		
 		{
 			printf("opencollection\n");
-			SetErrorMessage(DataHelper::GetAPIError(error));
+			DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage(error_text);
 			NSFDbClose(hDB);
 			NotesTermThread();
 			return;
@@ -349,7 +351,8 @@ public:
 				printf("nifread\n");
 				NIFCloseCollection(hCollection);
 				NSFDbClose(hDB);
-				SetErrorMessage(DataHelper::GetAPIError(error));				
+				DataHelper::GetAPIError(error,error_text);
+				SetErrorMessage(error_text);
 				NotesTermThread();
 				return;
 			}
@@ -374,7 +377,6 @@ public:
 			/* Start a loop that extracts the info about each collection entry from
 			the information buffer. */
 
-			printf("\n");
 			for (i = 1; i <= EntriesFound; i++)
 			{
 
@@ -396,11 +398,6 @@ public:
 				pSummary = pBuffer;
 				pBuffer += ItemTable.Length;
 
-				/* If this entry is a category, say so. */
-
-				if (NOTEID_CATEGORY & EntryID)
-					printf("CATEGORY: ");
-
 				/* Call a local function to print the summary buffer. */
 				if (error = PrintSummary(pSummary))
 				{
@@ -409,7 +406,8 @@ public:
 					OSMemFree(hBuffer);
 					NIFCloseCollection(hCollection);
 					NSFDbClose(hDB);
-					SetErrorMessage(DataHelper::GetAPIError(error));
+					DataHelper::GetAPIError(error,error_text);
+					SetErrorMessage(error_text);
 					NotesTermThread();
 					return;
 				}
@@ -435,14 +433,16 @@ public:
 		if (error = NIFCloseCollection(hCollection))
 		{
 			NSFDbClose(hDB);
-			SetErrorMessage(DataHelper::GetAPIError(error));
+			DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage(error_text);
 			NotesTermThread();
 			return;
 		}
 
 		if (error = NSFDbClose(hDB))
 		{
-			SetErrorMessage(DataHelper::GetAPIError(error));
+			DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage(error_text);
 			NotesTermThread();
 			return;
 		}

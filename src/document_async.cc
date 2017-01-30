@@ -70,20 +70,22 @@ public:
 	// It is not safe to access V8, or V8 data structures
 	// here, so everything we need for input and output
 	// should go on `this`.
-	void Execute() {
-		char       *db_filename;    /* pathname of source database */
+	void Execute() {		
 		DBHANDLE    db_handle;      /* handle of source database */
 		UNID temp_unid;
 		STATUS   error = NOERROR;           /* return status from API calls */
+		char *error_text =  (char *) malloc(sizeof(char) * 200);   
 
 		if (error = NotesInitThread())
 		{
-			SetErrorMessage(DataHelper::GetAPIError(error));
+			DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage(error_text);
 		}
 
 		if (error = NSFDbOpen(dbName.c_str(), &db_handle))
 		{
-			SetErrorMessage(DataHelper::GetAPIError(error));
+			DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage(error_text);
 			NotesTermThread();
 		}
 
@@ -111,7 +113,8 @@ public:
 			(WORD)0,                      /* open flags */
 			&note_handle))          /* note handle (return) */
 		{
-			SetErrorMessage(DataHelper::GetAPIError(error));
+			DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage(error_text);
 		}
 
 
@@ -121,12 +124,14 @@ public:
 			&note_handle))	/* argument to action routine */
 
 		{					
-			SetErrorMessage(DataHelper::GetAPIError(error));
+			DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage(error_text);
 		}
 
 		if (error = NSFDbClose(db_handle))
 		{
-			SetErrorMessage(DataHelper::GetAPIError(error));
+			DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage(error_text);
 		}
 
 		NotesTermThread();
@@ -252,7 +257,7 @@ STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr
 			timeinfo->tm_min = tid.minute-1;
 			timeinfo->tm_sec = tid.second-1;
 			
-			double dtime = mktime(timeinfo);
+			double dtime = static_cast<double>(mktime(timeinfo));
 			
 			double dateTimeValue = dtime * 1000; // convert to double time
 			ItemValue iv = ItemValue();

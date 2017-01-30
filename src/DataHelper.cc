@@ -1,6 +1,8 @@
 #include "DataHelper.h"
 #include <osmisc.h>
 
+using std::size_t;
+
 Local<Object> DataHelper::getV8Data(std::map <std::string, ItemValue> *doc) {
 	Local<Object> resDoc = Nan::New<Object>();
 	std::map<std::string, ItemValue>::iterator it;
@@ -15,7 +17,7 @@ Local<Object> DataHelper::getV8Data(std::map <std::string, ItemValue> *doc) {
 			Nan::Set(resDoc, New<v8::String>(it->first).ToLocalChecked(), New<v8::String>(value.stringValue).ToLocalChecked());
 						}
 		else if (value.type == 2) {
-			int ii;
+			size_t ii;
 			Local<Array> arr = New<Array>(value.vectorStrValue.size());
 			for (ii = 0; ii < value.vectorStrValue.size(); ii++) {
 				Nan::Set(arr, ii, Nan::New<String>(value.vectorStrValue[ii]).ToLocalChecked());
@@ -32,12 +34,11 @@ Local<Object> DataHelper::getV8Data(std::map <std::string, ItemValue> *doc) {
 	return resDoc;
 }
 
-char * DataHelper::GetAPIError(STATUS api_error)
+void DataHelper::GetAPIError(STATUS api_error, char * error_text)
 {
 	STATUS  string_id = ERR(api_error);
-	char    error_text[200];
 	WORD    text_len;
-
+	
 	/* Get the message for this IBM C API for Notes/Domino error code
 	from the resource string table. */
 
@@ -45,8 +46,7 @@ char * DataHelper::GetAPIError(STATUS api_error)
 		string_id,
 		error_text,
 		sizeof(error_text));
-	return error_text;
-
+	return;
 
 }
 
@@ -54,7 +54,7 @@ Local<Array> DataHelper::getV8Data(std::vector <std::map<std::string, ItemValue>
 
 	Local<Array> viewRes = New<Array>(viewResult.size());
 	
-	int j;
+	size_t j;
 	for (j = 0; j < viewResult.size(); j++) {
 		std::map<std::string, ItemValue> doc = viewResult[j];
 		Local<Object> resDoc = Nan::New<Object>();
@@ -69,7 +69,7 @@ Local<Array> DataHelper::getV8Data(std::vector <std::map<std::string, ItemValue>
 				Nan::Set(resDoc, New<v8::String>(it->first).ToLocalChecked(), New<v8::String>(value.stringValue).ToLocalChecked());
 								}
 				else if (value.type == 2) {
-					int ii;
+					size_t ii;
 					Local<Array> arr = New<Array>(value.vectorStrValue.size());
 					Nan::Set(arr, 0, Nan::New<String>("").ToLocalChecked());
 					for (ii = 0; ii < value.vectorStrValue.size(); ii++) {

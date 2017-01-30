@@ -65,22 +65,24 @@ public:
 	// should go on `this`.
 	void Execute() {
 
-		char       *db_filename;    /* pathname of source database */
 		DBHANDLE    db_handle;      /* handle of source database */
 		UNID temp_unid;
 		OID tempOID;
 		STATUS   error = NOERROR;           /* return status from API calls */
 		BOOLEAN isEdit = false;
 		NOTEHANDLE   note_handle2;
+		char *error_text =  (char *)malloc(sizeof(char) * 200);   
 
 		if (error = NotesInitThread())
 		{			
-			SetErrorMessage(DataHelper::GetAPIError(error));
+			DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage(error_text);
 		}
 
 		if (error = NSFDbOpen(dbName.c_str(), &db_handle))
 		{		
-			SetErrorMessage(DataHelper::GetAPIError(error));
+			DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage(error_text);
 		}
 
 		std::map<std::string, ItemValue>::iterator iter;
@@ -115,13 +117,15 @@ public:
 				&note_handle2))          /* note handle (return) */
 			{			
 				printf("error opening document\n");
-				SetErrorMessage(DataHelper::GetAPIError(error));
+				DataHelper::GetAPIError(error,error_text);
+				SetErrorMessage(error_text);
 			}
 		}
 		else {
 			//create new document			
 			if (error = NSFNoteCreate(db_handle, &note_handle2)) {				
-				SetErrorMessage(DataHelper::GetAPIError(error));
+				DataHelper::GetAPIError(error,error_text);
+				SetErrorMessage(error_text);
 			}
 
 		}
@@ -133,7 +137,8 @@ public:
 			if (value.type == 0) {
 				if (error = NSFItemSetNumber(note_handle2, it->first.c_str(), &value.numberValue))
 				{
-					SetErrorMessage("Error writing numberitem");
+					DataHelper::GetAPIError(error,error_text);
+					SetErrorMessage(error_text);
 				}
 			}
 			else if (value.type == 1) {
@@ -146,7 +151,8 @@ public:
 					buf,
 					MAXWORD))
 				{					
-					SetErrorMessage(DataHelper::GetAPIError(error));
+					DataHelper::GetAPIError(error,error_text);
+					SetErrorMessage(error_text);
 				}
 				
 			}
@@ -163,7 +169,8 @@ public:
 							buf,
 							MAXWORD))
 						{
-							SetErrorMessage(DataHelper::GetAPIError(error));
+							DataHelper::GetAPIError(error,error_text);
+							SetErrorMessage(error_text);
 						}
 					}
 					else {
@@ -173,7 +180,8 @@ public:
 							MAXWORD,
 							TRUE))
 						{
-							SetErrorMessage(DataHelper::GetAPIError(error));
+							DataHelper::GetAPIError(error,error_text);
+							SetErrorMessage(error_text);
 						}
 					}
 				}
@@ -197,19 +205,22 @@ public:
 				tid.hundredth = 0;
 				
 				if (error = TimeLocalToGM(&tid)) {
-					SetErrorMessage("error converting date object\n");					
+					DataHelper::GetAPIError(error,error_text);
+					SetErrorMessage(error_text);
 				}				
 
 				if (error = NSFItemSetTime(note_handle2, it->first.c_str(), &tid.GM))
 				{
-					SetErrorMessage("error adding date item\n");
+					DataHelper::GetAPIError(error,error_text);
+					SetErrorMessage(error_text);
 				}
 			}
 
 		}
 		
 		if (error = NSFNoteUpdate(note_handle2, 0)) {
-			SetErrorMessage(DataHelper::GetAPIError(error));
+			DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage(error_text);
 		}
 
 		NSFNoteGetInfo(note_handle2, _NOTE_OID, &tempOID);
@@ -219,11 +230,13 @@ public:
 		doc.insert(std::make_pair("@unid", ItemValue(unid_buffer)));
 		if (error = NSFNoteClose(note_handle2))
 		{			
-			SetErrorMessage(DataHelper::GetAPIError(error));
+			DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage(error_text);
 		}
 		if (error = NSFDbClose(db_handle))
 		{			
-			SetErrorMessage(DataHelper::GetAPIError(error));
+			DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage(error_text);
 		}		
 		NotesTermThread();
 
