@@ -196,7 +196,7 @@ STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr
 		&item_type, &bidLinksValue,
 		&dwLinksValueLen)) {
 		
-		return (ERROR);
+		return (error);
 	}
 	if (item_type == TYPE_TEXT) {
 

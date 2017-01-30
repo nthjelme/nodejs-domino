@@ -69,7 +69,7 @@ public:
 		UNID temp_unid;
 		OID tempOID;
 		STATUS   error = NOERROR;           /* return status from API calls */
-		BOOLEAN isEdit = false;
+		bool isEdit = false;
 		NOTEHANDLE   note_handle2;
 		char *error_text =  (char *)malloc(sizeof(char) * 200);   
 
@@ -268,6 +268,7 @@ private:
 	std::string dbName;
 	std::string unid;
 	std::map <std::string, ItemValue> doc;
+	
 };
 
 NAN_METHOD(SaveDocumentAsync) {	

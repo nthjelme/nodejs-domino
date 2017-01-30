@@ -52,7 +52,7 @@ class DataHelper {
 public:
 	static Local<Object> getV8Data(std::map <std::string, ItemValue> *doc);
 	static Local<Array> getV8Data(std::vector <std::map<std::string, ItemValue>> viewResult);
-	static void DataHelper::GetAPIError(STATUS api_error, char * error_text);
+	static void GetAPIError(STATUS api_error, char * error_text);
 };
 
 #endif  // ITEM_VALUE_H_
