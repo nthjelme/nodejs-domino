@@ -55,7 +55,7 @@ void TermDominoSession(const Nan::FunctionCallbackInfo<v8::Value>& info) {
 }
 
 static void termAtExitDominoSession(void*) {	
-	NotesTerm();
+	
 
 }
 NAN_MODULE_INIT(InitAll) {	
@@ -64,6 +64,7 @@ NAN_MODULE_INIT(InitAll) {
 	
 	Set(target, New<String>("saveDocumentAsync").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(SaveDocumentAsync)).ToLocalChecked());
+	
 	/*
 	Set(target, New<String>("deleteDocumentAsync").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(DeleteDocumentAsync)).ToLocalChecked());
