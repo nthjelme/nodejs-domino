@@ -8,6 +8,7 @@
 		"src/save_document_async.cc",
 		"src/view_async.cc",
 		"src/ItemValue.cc",
+		"src/DocumentItem.cc",
 		"src/DataHelper.cc"
       ],
       "conditions": [
