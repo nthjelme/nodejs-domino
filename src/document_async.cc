@@ -26,7 +26,7 @@
 
 #include <nan.h>
 #include "document_async.h"
-#include "ItemValue.h"
+#include "DocumentItem.h"
 #include "DataHelper.h"
 #include <nsfdb.h>
 #include <nif.h>
@@ -56,21 +56,37 @@ using Nan::Null;
 using Nan::To;
 
 NOTEHANDLE   note_handle;
-std::map <std::string, ItemValue> doc2;
+std::vector<DocumentItem *> items;
 
+template< typename T >
+struct delete_pointer_element
+{
+	void operator()(T element) const
+	{
+		delete element;
+	}
+};
 
 class DocumentWorker : public AsyncWorker {
 public:
 	DocumentWorker(Callback *callback, std::string serverName, std::string dbName, std::string unid)
-		: AsyncWorker(callback), serverName(serverName), dbName(dbName), unid(unid){}
-	~DocumentWorker() {}
+		: AsyncWorker(callback), serverName(serverName), dbName(dbName), unid(unid){
+	}
+	~DocumentWorker() {
+		// delete name pointer
+		for (size_t i = 0; i < items.size(); i++) {
+			if (items[i]->name) {
+				delete items[i]->name;
+			}			
+		}
+	}
 	
 	
 	// Executed inside the worker-thread.
 	// It is not safe to access V8, or V8 data structures
 	// here, so everything we need for input and output
 	// should go on `this`.
-	void Execute() {		
+	void Execute() {			
 		DBHANDLE    db_handle;      /* handle of source database */
 		UNID temp_unid;
 		STATUS   error = NOERROR;           /* return status from API calls */
@@ -81,20 +97,28 @@ public:
 			DataHelper::GetAPIError(error,error_text);
 			SetErrorMessage(error_text);
 		}
-
+		
 		if (error = NSFDbOpen(dbName.c_str(), &db_handle))
 		{
 			DataHelper::GetAPIError(error,error_text);
 			SetErrorMessage(error_text);
 			NotesTermThread();
 		}
-
+		
 		char unid_buffer[33];
 		strncpy(unid_buffer, unid.c_str(), 32);
+		
 		unid_buffer[32] = '\0';
-		doc2.insert(std::make_pair("@unid", ItemValue(unid)));
-		if (strlen(unid_buffer) == 32)
+		/*DocumentItem di;
+		di.name = "@unid";
+		di.type = 1;
+		printf("unid %s\n", unid.c_str());
+		di.stringValue = std::string(unid.c_str());*/
+		//doc2.insert(std::make_pair("@unid", ItemValue(unid)));
+		if (unid.length() == 32)
 		{
+			//items.push_back(DocumentItem("@unid", unid));
+
 			/* Note part second, reading backwards in buffer */
 			temp_unid.Note.Innards[0] = (DWORD)strtoul(unid_buffer + 24, NULL, 16);
 			unid_buffer[24] = '\0';
@@ -133,7 +157,7 @@ public:
 			DataHelper::GetAPIError(error,error_text);
 			SetErrorMessage(error_text);
 		}
-
+		
 		NotesTermThread();
 		
 	}
@@ -144,14 +168,38 @@ public:
 	// this function will be run inside the main event loop
 	// so it is safe to use V8 again
 	void HandleOKCallback() {
-		HandleScope scope;
-		Local<Object> resDoc = DataHelper::getV8Data(&doc2);
+		HandleScope scope;		
+		Local<Object> resDoc = Nan::New<Object>();
+		Nan::Set(resDoc, New<v8::String>("@unid").ToLocalChecked(), New<v8::String>(unid).ToLocalChecked());
+		for (std::size_t i = 0; i < items.size(); i++) {
+			DocumentItem *di = items[i];
+			if (di->type == 1) {				
+				Nan::Set(resDoc, New<v8::String>(di->name).ToLocalChecked(), New<v8::String>(di->stringValue).ToLocalChecked());
+			}
+			else if (di->type == 2) {
+				Nan::Set(resDoc, New<String>(di->name).ToLocalChecked(), New<Number>(di->numberValue));
+			}
+			else if (di->type == 3) {
+				Nan::Set(resDoc, New<v8::String>(di->name).ToLocalChecked(), New<v8::Date>(di->numberValue).ToLocalChecked());
+			}
+			else if (di->type == 4) {
+				size_t j;
+				Local<Array> arr = New<Array>();
+				for (size_t j = 0; j < di->vectorStrValue.size(); j++) {
+					if (di->vectorStrValue[j]) {						
+						Nan::Set(arr, j, Nan::New<String>(di->vectorStrValue[j]).ToLocalChecked());
+					}					
+				}
+				Nan::Set(resDoc, New<v8::String>(di->name).ToLocalChecked(), arr);
+			}			
+		}		
 		Local<Value> argv[] = {
 			Null()
 			, resDoc
 		};
-
+		
 		callback->Call(2, argv);
+		
 	}
 
 	void HandleErrorCallback() {
@@ -169,7 +217,6 @@ private:
 	std::string serverName;
 	std::string dbName;
 	std::string unid;	
-	std::map <std::string, ItemValue> *doc;	
 };
 
 
@@ -184,6 +231,8 @@ STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr
 	DWORD                  dwLinksValueLen;
 	BLOCKID                bidLinksValue;
 	WORD                   item_type;
+	DocumentItem * di = new DocumentItem();
+
 
 	char *field_name = (char*)malloc(name_len + 1);
 	if (field_name) {		
@@ -208,32 +257,48 @@ STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr
 
 		char buf[MAXWORD];
 		OSTranslate(OS_TRANSLATE_LMBCS_TO_UTF8, field_text, MAXWORD, buf, MAXWORD);
-		doc2.insert(std::make_pair(field_name, ItemValue(buf)));
-
+		di->stringValue = std::string(buf);
+		di->name = (char*)malloc(name_len + 1);
+		if (di->name) {
+			memcpy(di->name, name_ptr, name_len);
+			di->name[name_len] = '\0';
+		}		
+		di->type = 1;
+		items.push_back(di);
+		
 	}
 	else if (item_type == TYPE_TEXT_LIST) {
-		std::vector<std::string> vectorStrValue;
+		
 		WORD num_entries = NSFItemGetTextListEntries(note_handle,
 			field_name);
+		std::vector<char*> vectorStrValue = std::vector<char*>(0);
 		for (int counter = 0; counter < num_entries; counter++)
 		{
 			field_len = NSFItemGetTextListEntry(note_handle,
 				field_name, counter, field_text, (WORD)(sizeof(field_text) - 1));
 			//text_buf2[text_len] = '\0';
-			char buf[MAXWORD];
+			// buf[MAXWORD];
+			char *buf = (char*)malloc(field_len + 1);
 			OSTranslate(OS_TRANSLATE_LMBCS_TO_UTF8, field_text, MAXWORD, buf, MAXWORD);
-			vectorStrValue.push_back(buf);			
+			vectorStrValue.push_back(buf);
+			
 		}
-		doc2.insert(std::make_pair(field_name, ItemValue(vectorStrValue)));		
+		di->vectorStrValue = vectorStrValue;
+		di->name = field_name;
+		di->type = 4;
+		items.push_back(di);
 	}
 	else if (item_type == TYPE_NUMBER) {
 		NSFItemGetNumber(
 			note_handle,
 			field_name,
 			&number_field);
-		doc2.insert(std::make_pair(field_name, ItemValue((double)number_field)));
-		
+		di->numberValue = (double)number_field;
+		di->name = field_name;
+		di->type = 2;
+		items.push_back(di);
 	}
+	
 	else if (item_type == TYPE_TIME) {
 		TIMEDATE time_date;
 		if (NSFItemGetTime(note_handle,
@@ -260,14 +325,16 @@ STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr
 			double dtime = static_cast<double>(mktime(timeinfo));
 			
 			double dateTimeValue = dtime * 1000; // convert to double time
-			ItemValue iv = ItemValue();
-			iv.dateTimeValue = dateTimeValue;
-			iv.type = 3;
-			doc2.insert(std::make_pair(field_name, iv));
+			di->numberValue = dateTimeValue;
+			di->name = field_name;
+			di->type = 3;
+			items.push_back(di);
 		}
 
 
 	}
+
+	//delete field_name;
 
 	return(NOERROR);
 
@@ -292,7 +359,7 @@ NAN_METHOD(GetDocumentAsync) {
 	std::string unidStr;
 	serverStr = std::string(*serverName);
 	dbStr = std::string(*dbName);
-	unidStr = std::string(*unid);	
+	unidStr = std::string(*unid);		
 	Callback *callback = new Callback(info[2].As<Function>());
 
 	AsyncQueueWorker(new DocumentWorker(callback, serverStr,dbStr,unidStr));

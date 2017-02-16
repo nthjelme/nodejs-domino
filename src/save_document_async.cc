@@ -26,7 +26,7 @@
 
 #include <nan.h>
 #include "save_document_async.h"
-#include "ItemValue.h"
+#include "DocumentItem.h"
 #include "DataHelper.h"
 #include <lncppapi.h>
 #include <iostream>
@@ -55,8 +55,8 @@ using Nan::To;
 
 class SaveDocumentWorker : public AsyncWorker {
 public:
-	SaveDocumentWorker(Callback *callback, std::string serverName, std::string dbName, std::map <std::string, ItemValue> doc)
-		: AsyncWorker(callback), serverName(serverName), dbName(dbName), doc(doc) {}
+	SaveDocumentWorker(Callback *callback, std::string serverName, std::string dbName, std::string docUnid, std::vector<DocumentItem *> items)
+		: AsyncWorker(callback), serverName(serverName), dbName(dbName), unid(docUnid), items(items) {}
 	~SaveDocumentWorker() {}
 
 	// Executed inside the worker-thread.
@@ -64,38 +64,33 @@ public:
 	// here, so everything we need for input and output
 	// should go on `this`.
 	void Execute() {
-
 		DBHANDLE    db_handle;      /* handle of source database */
 		UNID temp_unid;
 		OID tempOID;
 		STATUS   error = NOERROR;           /* return status from API calls */
 		bool isEdit = false;
 		NOTEHANDLE   note_handle2;
-		char *error_text =  (char *)malloc(sizeof(char) * 200);   
+		char *error_text = (char *)malloc(sizeof(char) * 200);
 
 		if (error = NotesInitThread())
-		{			
-			DataHelper::GetAPIError(error,error_text);
-			SetErrorMessage(error_text);
+		{
+			//DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage("error init notes thread");
 		}
 
 		if (error = NSFDbOpen(dbName.c_str(), &db_handle))
-		{		
-			DataHelper::GetAPIError(error,error_text);
-			SetErrorMessage(error_text);
+		{
+			printf("error opening database\n");
+			//DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage("error opening database");
 		}
-
-		std::map<std::string, ItemValue>::iterator iter;
-		iter = doc.find("@unid");
-		if (iter != doc.end()) {
+		if (unid.length() == 32) {
 			// edit document
-			
 			isEdit = true;
-			ItemValue unidItem = iter->second;
-			const char * chrUNID = unidItem.stringValue.c_str();
+			const char * chrUNID = unid.c_str();
 			char unid_buffer[33];
 			strncpy(unid_buffer, chrUNID, 32);
-			unid_buffer[32] = '\0';			
+			unid_buffer[32] = '\0';
 			if (strlen(unid_buffer) == 32)
 			{
 				/* Note part second, reading backwards in buffer */
@@ -109,91 +104,97 @@ public:
 				unid_buffer[8] = '\0';
 				temp_unid.File.Innards[1] = (DWORD)strtoul(unid_buffer, NULL, 16);
 			}
-			
+
 			if (error = NSFNoteOpenByUNID(
 				db_handle,  /* database handle */
 				&temp_unid, /* note ID */
 				(WORD)0,                      /* open flags */
 				&note_handle2))          /* note handle (return) */
-			{			
+			{
 				printf("error opening document\n");
-				DataHelper::GetAPIError(error,error_text);
+				DataHelper::GetAPIError(error, error_text);
 				SetErrorMessage(error_text);
 			}
 		}
 		else {
-			//create new document			
-			if (error = NSFNoteCreate(db_handle, &note_handle2)) {				
-				DataHelper::GetAPIError(error,error_text);
-				SetErrorMessage(error_text);
+			//create new document		
+			if (error = NSFNoteCreate(db_handle, &note_handle2)) {
+				printf("error creating document\n");
+				NSFDbClose(db_handle);
+				NotesTermThread();
+				//DataHelper::GetAPIError(error,error_text);
+				//SetErrorMessage(error_text);
 			}
+
 
 		}
 
-		std::map<std::string, ItemValue>::iterator it;
-		for (it = doc.begin(); it != doc.end(); it++)
-		{
-			ItemValue value = it->second;
-			if (value.type == 0) {
-				if (error = NSFItemSetNumber(note_handle2, it->first.c_str(), &value.numberValue))
+
+		for (std::size_t ii = 0; ii < items.size(); ii++) {
+
+			if (items[ii]->type == 2) {
+				if (error = NSFItemSetNumber(note_handle2, items[ii]->name, &items[ii]->numberValue))
 				{
-					DataHelper::GetAPIError(error,error_text);
+					DataHelper::GetAPIError(error, error_text);
 					SetErrorMessage(error_text);
 				}
 			}
-			else if (value.type == 1) {
+			else if (items[ii]->type == 1) {
 				// text			
-				
 				char buf[MAXWORD];
-				OSTranslate(OS_TRANSLATE_UTF8_TO_LMBCS, value.stringValue.c_str(), MAXWORD, buf, MAXWORD);
+				OSTranslate(OS_TRANSLATE_UTF8_TO_LMBCS, items[ii]->stringValue.c_str(), MAXWORD, buf, MAXWORD);
+
 				if (error = NSFItemSetText(note_handle2,
-					it->first.c_str(),
+					items[ii]->name,
 					buf,
 					MAXWORD))
-				{					
-					DataHelper::GetAPIError(error,error_text);
+				{
+					DataHelper::GetAPIError(error, error_text);
 					SetErrorMessage(error_text);
 				}
-				
+
 			}
-			else if (value.type == 2) {
+			else if (items[ii]->type == 4) {
 				// text list
-				char buf[MAXWORD];
-				
-				size_t ii;
-				for (ii = 0; ii < value.vectorStrValue.size(); ii++) {
-					OSTranslate(OS_TRANSLATE_UTF8_TO_LMBCS, value.vectorStrValue[ii].c_str(), MAXWORD, buf, MAXWORD);
-					if (ii == 0) {						
+
+
+
+				for (size_t j = 0; j < items[ii]->vectorStrValue.size(); j++) {
+					size_t val_len = strlen(items[ii]->vectorStrValue[j]);
+					char *buf = (char*)malloc(val_len + 1);
+					OSTranslate(OS_TRANSLATE_UTF8_TO_LMBCS, items[ii]->vectorStrValue[j], val_len, buf, val_len);
+					if (j == 0) {
+
 						if (error = NSFItemCreateTextList(note_handle2,
-							it->first.c_str(),
+							items[ii]->name,
 							buf,
-							MAXWORD))
+							val_len))
 						{
-							DataHelper::GetAPIError(error,error_text);
+							DataHelper::GetAPIError(error, error_text);
 							SetErrorMessage(error_text);
 						}
 					}
 					else {
 						if (error = NSFItemAppendTextList(note_handle2,
-							it->first.c_str(),
+							items[ii]->name,
 							buf,
-							MAXWORD,
+							val_len,
 							TRUE))
 						{
-							DataHelper::GetAPIError(error,error_text);
+							DataHelper::GetAPIError(error, error_text);
 							SetErrorMessage(error_text);
 						}
 					}
 				}
 
-				
+
 			}
-			else if (value.type == 3) {
+			else if (items[ii]->type == 3) {
 				// datetime
 				TIME tid;
-				
-				std::time_t t = static_cast<time_t>(value.dateTimeValue / 1000);
-				struct tm* ltime = localtime(&t);				 
+
+				std::time_t t = static_cast<time_t>(items[ii]->numberValue / 1000);
+				struct tm* ltime = localtime(&t);
 				tid.year = ltime->tm_year + 1900;
 				tid.month = ltime->tm_mon + 1;
 				tid.day = ltime->tm_mday;
@@ -203,52 +204,91 @@ public:
 				tid.zone = 0;
 				tid.dst = 0;
 				tid.hundredth = 0;
-				
-				if (error = TimeLocalToGM(&tid)) {
-					DataHelper::GetAPIError(error,error_text);
-					SetErrorMessage(error_text);
-				}				
 
-				if (error = NSFItemSetTime(note_handle2, it->first.c_str(), &tid.GM))
+				if (error = TimeLocalToGM(&tid)) {
+					DataHelper::GetAPIError(error, error_text);
+					SetErrorMessage(error_text);
+				}
+
+				if (error = NSFItemSetTime(note_handle2, items[ii]->name, &tid.GM))
 				{
-					DataHelper::GetAPIError(error,error_text);
+					DataHelper::GetAPIError(error, error_text);
 					SetErrorMessage(error_text);
 				}
 			}
 
 		}
-		
+
 		if (error = NSFNoteUpdate(note_handle2, 0)) {
-			DataHelper::GetAPIError(error,error_text);
-			SetErrorMessage(error_text);
+			//DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage("error updating note");
+			NSFDbClose(db_handle);
+			NotesTermThread();
+			return;
 		}
 
 		NSFNoteGetInfo(note_handle2, _NOTE_OID, &tempOID);
 		char unid_buffer[33];
 		snprintf(unid_buffer, 33, "%08X%08X%08X%08X", tempOID.File.Innards[1], tempOID.File.Innards[0], tempOID.Note.Innards[1], tempOID.Note.Innards[0]);
-		
-		doc.insert(std::make_pair("@unid", ItemValue(unid_buffer)));
+		DocumentItem *di = new DocumentItem();
+		di->name = (char*)malloc(6);
+		if (di->name) {
+			strcpy(di->name, "@unid");
+		}
+		di->type = 1;
+		di->stringValue = std::string(unid_buffer);
+		items.push_back(di);
+
 		if (error = NSFNoteClose(note_handle2))
-		{			
-			DataHelper::GetAPIError(error,error_text);
-			SetErrorMessage(error_text);
+		{
+			//DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage("error closing notes");
+			NSFDbClose(db_handle);
+			NotesTermThread();
+			return;
 		}
 		if (error = NSFDbClose(db_handle))
-		{			
-			DataHelper::GetAPIError(error,error_text);
-			SetErrorMessage(error_text);
-		}		
+		{
+			//DataHelper::GetAPIError(error,error_text);
+			SetErrorMessage("error closing db");
+			NotesTermThread();
+			return;
+		}
 		NotesTermThread();
+
 
 	}
 
-	void HandleOKCallback() {		
+	void HandleOKCallback() {
 		HandleScope scope;
-		Local<Object> resDoc = DataHelper::getV8Data(&doc);			
+		Local<Object> resDoc = Nan::New<Object>();
+		for (std::size_t i = 0; i < items.size(); i++) {
+			DocumentItem *di = items[i];
+			if (di->type == 1) {
+				Nan::Set(resDoc, New<v8::String>(di->name).ToLocalChecked(), New<v8::String>(di->stringValue).ToLocalChecked());
+			}
+			else if (di->type == 2) {
+				Nan::Set(resDoc, New<String>(di->name).ToLocalChecked(), New<Number>(di->numberValue));
+			}
+			else if (di->type == 3) {
+				Nan::Set(resDoc, New<v8::String>(di->name).ToLocalChecked(), New<v8::Date>(di->numberValue).ToLocalChecked());
+			}
+			else if (di->type == 4) {
+				size_t j;
+				Local<Array> arr = New<Array>();
+				for (size_t j = 0; j < di->vectorStrValue.size(); j++) {
+					if (di->vectorStrValue[j]) {
+						Nan::Set(arr, j, Nan::New<String>(di->vectorStrValue[j]).ToLocalChecked());
+					}
+				}
+				Nan::Set(resDoc, New<v8::String>(di->name).ToLocalChecked(), arr);
+			}
+		}
+
 		Local<Value> argv[] = {
 			Null()
 			, resDoc
-		};		
+		};
 		callback->Call(2, argv);
 	}
 
@@ -268,13 +308,13 @@ private:
 	std::string dbName;
 	std::string unid;
 	std::map <std::string, ItemValue> doc;
-	
+	std::vector<DocumentItem *> items;
 };
 
-NAN_METHOD(SaveDocumentAsync) {	
-	v8::Isolate* isolate = info.GetIsolate();	
+NAN_METHOD(SaveDocumentAsync) {
+	v8::Isolate* isolate = info.GetIsolate();
 	Local<Object> param = (info[0]->ToObject());
-	Local<Object> docParam = (info[1]->ToObject());	
+	Local<Object> document = (info[1]->ToObject());
 	Local<Value> serverKey = String::NewFromUtf8(isolate, "server");
 	Local<Value> databaseKey = String::NewFromUtf8(isolate, "database");
 	Local<Value> serverVal = param->Get(serverKey);
@@ -283,51 +323,22 @@ NAN_METHOD(SaveDocumentAsync) {
 	String::Utf8Value dbName(databaseVal->ToString());
 	std::string serverStr;
 	std::string dbStr;
-	
+	std::string docUnid;
+	if (document->Has(String::NewFromUtf8(isolate, "@unid"))) {
+		Local<Value> unidVal = document->Get(String::NewFromUtf8(isolate, "@unid"));
+		String::Utf8Value unid(unidVal->ToString());
+		docUnid = std::string(*unid);
+		document->Delete(String::NewFromUtf8(isolate, "@unid"));
+	}
 	serverStr = std::string(*serverName);
 	dbStr = std::string(*dbName);
-	
-	std::map <std::string, ItemValue> doc;
-	
-	// get document
-	Local<Array> propNames = docParam->GetOwnPropertyNames();
-	unsigned int num_prop = propNames->Length();
-	for (unsigned int i = 0; i < num_prop; i++) {
-		Local<Value> name = propNames->Get(i);
-		std::string key;
-		
-		Local<String> keyStr = Local<String>::Cast(name);
-		v8::String::Utf8Value param1(keyStr->ToString());
-		key = std::string(*param1);
-		Local<Value> val = docParam->Get(name);		
-		
-		if (val->IsString()) {
-			String::Utf8Value value(val->ToString());
-			std::string valueStr = std::string(*value);			
-			doc.insert(std::make_pair(key, ItemValue(std::string(*value))));			
-		} else if (val->IsArray()) {			
-			Local<Array> arrVal = Local<Array>::Cast(val);
-			unsigned int num_locations = arrVal->Length();
-			if (num_locations>0) {
-				std::vector<std::string> docVec;
-				for (unsigned int i = 0; i < num_locations; i++) {
-					Local<Object> obj = Local<Object>::Cast(arrVal->Get(i));
-					String::Utf8Value value(obj->ToString());
-					docVec.push_back(*value);
-				}
-				doc.insert(std::make_pair(key, ItemValue(docVec)));			
-			}
-		} else if (val->IsNumber()) {			
-			Local<Number> numVal = val->ToNumber();			
-			doc.insert(std::make_pair(key, ItemValue(numVal->NumberValue())));			
-		} else if (val->IsDate()) {
-			double ms = v8::Date::Cast(*val)->NumberValue();
-			doc.insert(std::make_pair(key, ItemValue(ms,3)));
-		}
-		
-	}	
-	
+
+
+	std::vector<DocumentItem*> items = unpack_document(document);
+
 	Callback *callback = new Callback(info[2].As<Function>());
 
-	AsyncQueueWorker(new SaveDocumentWorker(callback, serverStr, dbStr, doc));
+	AsyncQueueWorker(new SaveDocumentWorker(callback, serverStr, dbStr, docUnid, items));
 }
+
+
