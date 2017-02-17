@@ -22,8 +22,7 @@ void pack_document(v8::Local<v8::Object> & target, std::vector<DocumentItem *> i
 	for (std::size_t i = 0; i < items.size(); i++) {
 		DocumentItem *di = items[i];
 		
-		if (items[i]->type == 1) {
-			
+		if (items[i]->type == 1) {			
 			Nan::Set(target, New<v8::String>(items[i]->name).ToLocalChecked(), New<v8::String>(items[i]->stringValue).ToLocalChecked());
 		}
 		else if (items[i]->type == 2) {
@@ -32,8 +31,7 @@ void pack_document(v8::Local<v8::Object> & target, std::vector<DocumentItem *> i
 		else if (items[i]->type == 3) {
 			Nan::Set(target, New<v8::String>(items[i]->name).ToLocalChecked(), New<v8::Date>(items[i]->numberValue).ToLocalChecked());
 		}
-		else if (items[i]->type == 4) {
-			size_t j;
+		else if (items[i]->type == 4) {			
 			Local<Array> arr = New<Array>();
 			for (size_t j = 0; j < items[i]->vectorStrValue.size(); j++) {
 				Nan::Set(arr, j, Nan::New<String>(items[i]->vectorStrValue[j]).ToLocalChecked());
