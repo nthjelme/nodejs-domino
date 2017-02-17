@@ -182,8 +182,7 @@ public:
 			else if (di->type == 3) {
 				Nan::Set(resDoc, New<v8::String>(di->name).ToLocalChecked(), New<v8::Date>(di->numberValue).ToLocalChecked());
 			}
-			else if (di->type == 4) {
-				size_t j;
+			else if (di->type == 4) {				
 				Local<Array> arr = New<Array>();
 				for (size_t j = 0; j < di->vectorStrValue.size(); j++) {
 					if (di->vectorStrValue[j]) {						
