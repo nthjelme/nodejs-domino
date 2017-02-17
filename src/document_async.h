@@ -29,7 +29,6 @@
 
 #include <nan.h>
 #include "global.h"
-#include "ItemValue.h"
 
 
 NAN_METHOD(GetDocumentAsync);
