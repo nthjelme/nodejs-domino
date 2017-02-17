@@ -26,7 +26,7 @@
 
 #include <nan.h>
 #include "document_async.h"  
-#include "ItemValue.h"
+#include "DocumentItem.h"
 #include "DataHelper.h"
 #include <lncppapi.h>
 #include <iostream>
@@ -53,7 +53,9 @@ using Nan::New;
 using Nan::Null;
 using Nan::To;
 
-std::vector <std::map<std::string, ItemValue>> viewResult;
+//std::vector <std::map<std::string, ItemValue>> viewResult;
+
+std::vector<std::vector<DocumentItem *>> view;
 
 
 STATUS PrintSummary(BYTE *pSummary)
@@ -105,13 +107,14 @@ value of item #3
 	char    ItemName[MAX_ITEM_NAME_LEN];/* Zero terminated item name */
 	NUMBER  NumericItem;            /* a numeric item */
 	TIMEDATE   TimeItem;            /* a time/date item */
-	ItemValue iv;
+	
 	time_t rawtime;
 	double dtime;
 	double dateTimeValue;
 
 
-	std::map <std::string, ItemValue> doc2;
+	//std::map <std::string, ItemValue> doc2;
+	std::vector<DocumentItem*> column;
 
 										/* pSummaryPos points to the beginning of the summary buffer. Copy
 										the ITEM_TABLE header at the beginning of the summary buffer
@@ -157,6 +160,12 @@ value of item #3
 
 		ValueLength = Items[i].ValueLength - sizeof(WORD);
 		/* If the item data type is text, copy into ItemText[]. */
+		DocumentItem  *di = new DocumentItem();
+		di->name = (char*)malloc(NameLength + 1);
+		if (di->name) {
+			memcpy(di->name, ItemName, NameLength);
+			di->name[NameLength] = '\0';
+		}
 
 		switch (DataType)
 		{
@@ -169,7 +178,10 @@ value of item #3
 			
 			char buf[MAXWORD];
 			OSTranslate(OS_TRANSLATE_LMBCS_TO_UTF8, ItemText, MAXWORD, buf, MAXWORD);
-			doc2.insert(std::make_pair(ItemName, ItemValue(buf)));
+			
+			di->stringValue = buf;
+			di->type = 1;
+			column.push_back(di);
 			break;
 
 			/* Extract a text list item from the pSummary. */
@@ -185,8 +197,10 @@ value of item #3
 			/* Extract a number item from the pSummary. */
 
 		case TYPE_NUMBER:
-			memcpy(&NumericItem, pSummaryPos, NUMERIC_SIZE);
-			doc2.insert(std::make_pair(ItemName, ItemValue(NumericItem)));
+			memcpy(&NumericItem, pSummaryPos, NUMERIC_SIZE);			
+			di->numberValue = NumericItem;
+			di->type = 2;
+			column.push_back(di);
 			break;
 
 			/* Extract a time/date item from the pSummary. */
@@ -213,11 +227,10 @@ value of item #3
 			timeinfo->tm_sec = tid.second - 1;
 			dtime = static_cast<double>(mktime(timeinfo));
 
-			dateTimeValue = dtime * 1000; // convert to double time
-			iv = ItemValue();
-			iv.dateTimeValue = dateTimeValue;
-			iv.type = 3;
-			doc2.insert(std::make_pair(ItemName, iv));
+			dateTimeValue = dtime * 1000; // convert to double time			
+			di->numberValue = dateTimeValue;
+			di->type = 3;
+			column.push_back(di);
 			break;
 
 			/* If the pSummary item is not one of the data types this program
@@ -230,10 +243,11 @@ value of item #3
 		pSummaryPos += ValueLength;
 		//pSummaryPos += (ItemLength[i] - DATATYPE_SIZE);
 		/* End of loop that is extracting each item in the pSummary. */
-		viewResult.push_back(doc2);
+		//viewResult.push_back(doc2);
+		
 
 	}
-
+	view.push_back(column);
 	/* End of function */
 
 	return (NOERROR);
@@ -455,9 +469,34 @@ public:
 	// so it is safe to use V8 again
 	void HandleOKCallback() {
 		HandleScope scope;
-		Local<Array> viewRes = DataHelper::getV8Data(viewResult);
+		Local<Array> viewRes = New<Array>();//DataHelper::getV8Data(viewResult);
 		
-		
+		for (size_t j = 0; j < view.size(); j++) {
+			std::vector<DocumentItem*> column = view[j];
+			Local<Object> resDoc = Nan::New<Object>();
+			for (size_t k = 0; k < column.size(); k++) {
+				DocumentItem *di = column[k];
+				if (di->type == 1) {
+					Nan::Set(resDoc, New<v8::String>(di->name).ToLocalChecked(), New<v8::String>(di->stringValue).ToLocalChecked());
+				}
+				else if (di->type == 2) {
+					Nan::Set(resDoc, New<String>(di->name).ToLocalChecked(), New<Number>(di->numberValue));
+				}
+				else if (di->type == 3) {
+					Nan::Set(resDoc, New<v8::String>(di->name).ToLocalChecked(), New<v8::Date>(di->numberValue).ToLocalChecked());
+				}
+				else if (di->type == 4) {					
+					Local<Array> arr = New<Array>();
+					for (size_t j = 0; j < di->vectorStrValue.size(); j++) {
+						if (di->vectorStrValue[j]) {
+							Nan::Set(arr, j, Nan::New<String>(di->vectorStrValue[j]).ToLocalChecked());
+						}
+					}
+					Nan::Set(resDoc, New<v8::String>(di->name).ToLocalChecked(), arr);
+				}
+			}
+			Nan::Set(viewRes, j, resDoc);
+		}
 		Local<Value> argv[] = {
 			Null()
 			, viewRes
