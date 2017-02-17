@@ -36,7 +36,7 @@
 #include <vector>
 #include <global.h>
 
-#include "ItemValue.h"
+
 
 using v8::Local;
 using v8::Array;
@@ -50,8 +50,6 @@ using Nan::To;
 
 class DataHelper {
 public:
-	static Local<Object> getV8Data(std::map <std::string, ItemValue> *doc);
-	static Local<Array> getV8Data(std::vector <std::map<std::string, ItemValue>> viewResult);
 	static void GetAPIError(STATUS api_error, char * error_text);
 };
 
