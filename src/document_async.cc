@@ -109,16 +109,9 @@ public:
 		strncpy(unid_buffer, unid.c_str(), 32);
 		
 		unid_buffer[32] = '\0';
-		/*DocumentItem di;
-		di.name = "@unid";
-		di.type = 1;
-		printf("unid %s\n", unid.c_str());
-		di.stringValue = std::string(unid.c_str());*/
-		//doc2.insert(std::make_pair("@unid", ItemValue(unid)));
+	
 		if (unid.length() == 32)
-		{
-			//items.push_back(DocumentItem("@unid", unid));
-
+		{	
 			/* Note part second, reading backwards in buffer */
 			temp_unid.Note.Innards[0] = (DWORD)strtoul(unid_buffer + 24, NULL, 16);
 			unid_buffer[24] = '\0';
@@ -139,6 +132,7 @@ public:
 		{
 			DataHelper::GetAPIError(error,error_text);
 			SetErrorMessage(error_text);
+			NSFDbClose(db_handle);
 		}
 
 
@@ -150,6 +144,8 @@ public:
 		{					
 			DataHelper::GetAPIError(error,error_text);
 			SetErrorMessage(error_text);
+			NSFNoteClose(note_handle);
+			NSFDbClose(db_handle);
 		}
 
 		if (error = NSFDbClose(db_handle))
