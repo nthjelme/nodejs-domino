@@ -37,6 +37,7 @@
 
 #define     CATEGORY_LEVEL_BEING_SEARCHED 0
 #define  MAIN_TOPIC_INDENT    0
+#define MALLOC_AMOUNT   6048
 
 using v8::Function;
 using v8::Local;
@@ -90,6 +91,12 @@ value of item #3
 #define  ITEM_LENGTH_SIZE   sizeof(USHORT)
 #define  NUMERIC_SIZE       sizeof(NUMBER)
 #define  TIME_SIZE          sizeof(TIMEDATE)
+	
+	/* cleanup flag values*/
+#define DO_NOTHING      0x0000
+#define FREE_KEY1       0x0004
+#define FREE_TRANSLATEDKEY       0x0008
+#define FREE_PKEY       0x0011
 
 
 	/* Local variables */
@@ -112,8 +119,6 @@ value of item #3
 	double dtime;
 	double dateTimeValue;
 
-
-	//std::map <std::string, ItemValue> doc2;
 	std::vector<DocumentItem*> column;
 
 										/* pSummaryPos points to the beginning of the summary buffer. Copy
@@ -121,10 +126,11 @@ value of item #3
 										to a local variable. Advance pSummaryPos to point to the next
 										byte in the summary buffer after the ITEM_TABLE.
 										*/
-	pSummaryPos = pSummary;
+	pSummaryPos = pSummary;	
 	
 	memcpy((char*)(&ItemTable), pSummaryPos, sizeof(ITEM_TABLE));
 	pSummaryPos += sizeof(ItemTable);
+
 	/* pSummaryPos now points to the first ITEM in an array of ITEM
 	structures. Copy this array of ITEM structures into the global
 	Items[] array.
@@ -132,6 +138,7 @@ value of item #3
 	ItemCount = ItemTable.Items;
 	for (i = 0; i < ItemCount; i++)
 	{
+		
 		memcpy((char*)(&Items[i]), pSummaryPos, sizeof(ITEM));
 		pSummaryPos += sizeof(ITEM);
 	}
@@ -154,7 +161,6 @@ value of item #3
 		value and convert the value to printable text. Store the
 		text in ItemText.
 		*/
-
 		memcpy((char*)(&DataType), pSummaryPos, sizeof(WORD));
 		pSummaryPos += sizeof(WORD);
 
@@ -172,73 +178,72 @@ value of item #3
 
 			/* Extract a text item from the pSummary. */
 
-		case TYPE_TEXT:
-			memcpy(ItemText, pSummaryPos, ValueLength);
-			ItemText[ValueLength] = '\0';
+			case TYPE_TEXT:
+				memcpy(ItemText, pSummaryPos, ValueLength);
+				ItemText[ValueLength] = '\0';
 			
-			char buf[MAXWORD];
-			OSTranslate(OS_TRANSLATE_LMBCS_TO_UTF8, ItemText, MAXWORD, buf, MAXWORD);
+				char buf[MAXWORD];
+				OSTranslate(OS_TRANSLATE_LMBCS_TO_UTF8, ItemText, MAXWORD, buf, MAXWORD);
 			
-			di->stringValue = buf;
-			di->type = 1;
-			column.push_back(di);
-			break;
+				di->stringValue = buf;
+				di->type = 1;
+				column.push_back(di);
+				break;
 
 			/* Extract a text list item from the pSummary. */
 
-		case TYPE_TEXT_LIST:
-			printf("is text list, not supported");
-			/*if (error = ExtractTextList(
-				pSummaryPos,
-				ItemText))
-				return (ERR(error));
-			break;
-			*/
-			/* Extract a number item from the pSummary. */
+			case TYPE_TEXT_LIST:
+				printf("is text list, not (yet) supported");
+				/*if (error = ExtractTextList(
+					pSummaryPos,
+					ItemText))
+					return (ERR(error));
+				break;
+				*/
 
-		case TYPE_NUMBER:
-			memcpy(&NumericItem, pSummaryPos, NUMERIC_SIZE);			
-			di->numberValue = NumericItem;
-			di->type = 2;
-			column.push_back(di);
-			break;
+			/* Extract a number item from the pSummary. */
+			case TYPE_NUMBER:
+				memcpy(&NumericItem, pSummaryPos, NUMERIC_SIZE);			
+				di->numberValue = NumericItem;
+				di->type = 2;
+				column.push_back(di);
+				break;
 
 			/* Extract a time/date item from the pSummary. */
 
-		case TYPE_TIME:
+			case TYPE_TIME:
+				memcpy(&TimeItem, pSummaryPos, TIME_SIZE);
+				TIME tid;
+				struct tm * timeinfo;
+	
+				tid.GM = TimeItem;
+				tid.zone = 0;
+				tid.dst = 0;
+				TimeGMToLocalZone(&tid);
+	
+				rawtime = time(0);
+				timeinfo = localtime(&rawtime);
+				timeinfo->tm_year = tid.year - 1900;
+				timeinfo->tm_mon = tid.month - 1;
+				timeinfo->tm_mday = tid.day;
 
-			memcpy(&TimeItem, pSummaryPos, TIME_SIZE);
-			TIME tid;
-			struct tm * timeinfo;
+				timeinfo->tm_hour = tid.hour;
+				timeinfo->tm_min = tid.minute - 1;
+				timeinfo->tm_sec = tid.second - 1;
+				dtime = static_cast<double>(mktime(timeinfo));
 
-			tid.GM = TimeItem;
-			tid.zone = 0;
-			tid.dst = 0;
-			TimeGMToLocalZone(&tid);
-
-			rawtime = time(0);
-			timeinfo = localtime(&rawtime);
-			timeinfo->tm_year = tid.year - 1900;
-			timeinfo->tm_mon = tid.month - 1;
-			timeinfo->tm_mday = tid.day;
-
-			timeinfo->tm_hour = tid.hour;
-			timeinfo->tm_min = tid.minute - 1;
-			timeinfo->tm_sec = tid.second - 1;
-			dtime = static_cast<double>(mktime(timeinfo));
-
-			dateTimeValue = dtime * 1000; // convert to double time			
-			di->numberValue = dateTimeValue;
-			di->type = 3;
-			column.push_back(di);
-			break;
+				dateTimeValue = dtime * 1000; // convert to double time			
+				di->numberValue = dateTimeValue;
+				di->type = 3;
+				column.push_back(di);
+				break;
 
 			/* If the pSummary item is not one of the data types this program
 			handles. */
 
-		default:			
-			break;
-		}
+			default:			
+				break;
+			}
 		/* Advance to next item in the pSummary. */
 		pSummaryPos += ValueLength;
 		//pSummaryPos += (ItemLength[i] - DATATYPE_SIZE);
@@ -258,8 +263,8 @@ value of item #3
 
 class ViewWorker : public AsyncWorker {
 public:
-	ViewWorker(Callback *callback, std::string serverName, std::string dbName, std::string viewName,std::string category,std::string find)
-		: AsyncWorker(callback), serverName(serverName), dbName(dbName), viewName(viewName),category(category),find(find) {}
+	ViewWorker(Callback *callback, std::string serverName, std::string dbName, std::string viewName,std::string category,std::string findByKey)
+		: AsyncWorker(callback), serverName(serverName), dbName(dbName), viewName(viewName),category(category),findByKey(findByKey) {}
 	~ViewWorker() {}
 
 	// Executed inside the worker-thread.
@@ -267,21 +272,30 @@ public:
 	// here, so everything we need for input and output
 	// should go on `this`.
 	void Execute() {
-		//char     *DBFileName;            /* pathname of the database */
-		//char     *ViewName;              /* name of the view we'll read */
-		DBHANDLE hDB;                    /* handle of the database */
-		NOTEID      ViewID;              /* note id of the view */
-		HCOLLECTION hCollection;         /* collection handle */
-		COLLECTIONPOSITION CollPosition; /* index into collection */
-		DHANDLE       hBuffer;             /* handle to buffer of info */
-		BYTE        *pBuffer;            /* pointer into info buffer */
-		BYTE        *pSummary;           /* pointer into info buffer */
-		NOTEID      EntryID;             /* a collection entry id */
-		DWORD       EntriesFound;        /* number of entries found */
-		ITEM_TABLE  ItemTable;           /* table in pSummary buffer */
-		WORD        SignalFlag;          /* signal and share warning flags */
-		DWORD       i;                   /* a counter */
-		STATUS      error = NOERROR;     /* return status from API calls */
+
+		WORD					cleanup = DO_NOTHING;
+		DBHANDLE				hDB;                    /* handle of the database */
+		NOTEID					ViewID;              /* note id of the view */
+		HCOLLECTION				hCollection;         /* collection handle */
+		COLLECTIONPOSITION		CollPosition; /* index into collection */
+		DHANDLE					hBuffer;             /* handle to buffer of info */
+		BYTE					*pBuffer;            /* pointer into info buffer */
+		BYTE			        *pSummary;           /* pointer into info buffer */
+		NOTEID					EntryID;             /* a collection entry id */		
+		DWORD					number_match;
+		DWORD					EntriesFound;        /* number of entries found */
+		ITEM_TABLE				ItemTable;           /* table in pSummary buffer */
+		WORD					SignalFlag;          /* signal and share warning flags */		
+		STATUS					error = NOERROR;     /* return status from API calls */
+		BOOL					FirstTime = TRUE;
+		char					*pTemp, *pKey;
+		ITEM_TABLE				Itemtbl;
+		ITEM					Item;
+		WORD					Word;
+		char					*Key1;          /* secondary key                          */
+		WORD					Item1ValueLen; /* len of actual primary text to match on */
+		WORD					TranslatedKeyLen;
+		char					*TranslatedKey;      /* Translated string key */
 		char *error_text = (char *) malloc(sizeof(char) * 200);   
 		
 		if (error = NotesInitThread())
@@ -324,8 +338,7 @@ public:
 			NULLHANDLE,     /* handle to collapsed list (return) */
 			NULLHANDLE))    /* handle to selected list (return) */
 		
-		{
-			printf("opencollection\n");
+		{			
 			DataHelper::GetAPIError(error,error_text);
 			SetErrorMessage(error_text);
 			NSFDbClose(hDB);
@@ -338,6 +351,103 @@ public:
 		CollPosition.Level = 0;
 		CollPosition.Tumbler[0] = 0;
 
+		number_match = 0xFFFFFFFF;         /* max number to read */
+		
+		if (category.length() > 0) {
+			error = NIFFindByName(hCollection, category.c_str(), FIND_CASE_INSENSITIVE, &CollPosition, &number_match);			
+			if (ERR(error) == ERR_NOT_FOUND) {
+				SetErrorMessage("Category not found in the collection");
+				NIFCloseCollection(hCollection);
+				NSFDbClose(hDB);
+				NotesTermThread();
+				return;
+			}
+			if (error) {
+				DataHelper::GetAPIError(error, error_text);
+				SetErrorMessage(error_text);
+				NIFCloseCollection(hCollection);
+				NSFDbClose(hDB);
+				NotesTermThread();
+				return;
+			}
+		}
+		else if (findByKey.length()>0) {
+			TranslatedKey = (char *)malloc(256);
+			if (TranslatedKey == NULL)
+			{
+				printf("Error: Out of memory.\n");
+			}
+			else
+				cleanup |= FREE_TRANSLATEDKEY;
+			Key1 = (char *)malloc(256);
+			if (Key1 == NULL)
+			{
+				printf("Error: Out of memory.\n");
+			}
+			else
+				cleanup |= FREE_KEY1;
+				/* Translate the input key to LMBCS */
+				TranslatedKeyLen = OSTranslate (OS_TRANSLATE_UTF8_TO_LMBCS,
+                                findByKey.c_str(),
+                                (WORD) strlen (findByKey.c_str()),
+                                TranslatedKey,
+                                256);
+
+			Item1ValueLen = TranslatedKeyLen + sizeof(WORD);
+			pKey = (char *)malloc(MALLOC_AMOUNT);
+
+			if (pKey == NULL)
+			{
+				printf("Error: Out of memory.\n");				
+			}
+			else
+				cleanup |= FREE_PKEY;
+
+			pTemp = pKey;
+
+			Itemtbl.Length = (sizeof(Itemtbl) +
+				(1 * (sizeof(Item))) + Item1ValueLen);
+			Itemtbl.Items = 1;
+
+			memcpy(pTemp, &Itemtbl, sizeof(Itemtbl));
+			pTemp += sizeof(Itemtbl);
+
+			Item.NameLength = 0;
+			Item.ValueLength = Item1ValueLen;
+			memcpy(pTemp, &Item, sizeof(Item));
+			pTemp += sizeof(Item);
+
+			Word = TYPE_TEXT;
+			memcpy(pTemp, &Word, sizeof(Word));
+			pTemp += sizeof(Word);
+
+			memcpy(pTemp, TranslatedKey, TranslatedKeyLen);
+			pTemp += TranslatedKeyLen;
+			
+
+			error = NIFFindByKey(hCollection, pKey, FIND_CASE_INSENSITIVE, &CollPosition, NULL);
+			if (ERR(error) == ERR_NOT_FOUND) {
+				SetErrorMessage("Note not found in the collection");
+				NIFCloseCollection(hCollection);
+				NSFDbClose(hDB);
+				NotesTermThread();
+				return;
+			}
+			if (error) {
+				DataHelper::GetAPIError(error, error_text);
+				SetErrorMessage(error_text);
+				NIFCloseCollection(hCollection);
+				NSFDbClose(hDB);
+				NotesTermThread();
+				return;
+			}
+			number_match = 1;
+		}
+		else {
+			FirstTime = FALSE;
+		}
+		
+
 		/* Get the note ID and summary of every entry in the collection. In the
 		returned buffer, first comes all of the info about the first entry, then
 		all of the info about the 2nd entry, etc. For each entry, the info is
@@ -348,12 +458,16 @@ public:
 			if (error = NIFReadEntries(
 				hCollection,        /* handle to this collection */
 				&CollPosition,      /* where to start in collection */
-				NAVIGATE_NEXT,      /* order to use when skipping */
-				1L,                 /* number to skip */
+				(WORD)(FirstTime ? NAVIGATE_CURRENT : NAVIGATE_NEXT),
+				/* order to use when skipping */
+				FirstTime ? 0L : 1L,    /* number to skip */
+				//NAVIGATE_NEXT,      /* order to use when skipping */
+				//1L,                 /* number to skip */
 				NAVIGATE_NEXT,      /* order to use when reading */
-				0xFFFFFFFF,         /* max number to read */
-				
+				number_match,
 				READ_MASK_NOTEID +  /* info we want */
+				//READ_MASK_INDENTLEVELS +
+				//READ_MASK_INDEXPOSITION+
 				READ_MASK_SUMMARY,
 				&hBuffer,           /* handle to info buffer (return)  */
 				NULL,               /* length of info buffer (return) */
@@ -361,8 +475,7 @@ public:
 				&EntriesFound,      /* entries read (return) */
 				&SignalFlag))       /* share warning and more signal flag
 									(return) */
-			{
-				printf("nifread\n");
+			{				
 				NIFCloseCollection(hCollection);
 				NSFDbClose(hDB);
 				DataHelper::GetAPIError(error,error_text);
@@ -391,7 +504,7 @@ public:
 			/* Start a loop that extracts the info about each collection entry from
 			the information buffer. */
 
-			for (i = 1; i <= EntriesFound; i++)
+			for (DWORD i = 1; i <= EntriesFound; i++)
 			{
 
 				/* Get the ID of this entry. */
@@ -402,6 +515,13 @@ public:
 
 				pBuffer += sizeof(EntryID);
 
+				/* get ident level of entry
+				entry_indent = *(WORD*)pBuffer;
+				pBuffer += sizeof(WORD);
+
+				entry_index_size = COLLECTIONPOSITIONSIZE
+				((COLLECTIONPOSITION*)pBuffer);
+				*/
 				/* Get the header for the summary items for this entry. */
 
 				memcpy(&ItemTable, pBuffer, sizeof(ItemTable));
@@ -411,6 +531,18 @@ public:
 
 				pSummary = pBuffer;
 				pBuffer += ItemTable.Length;
+
+				if (category.size() > 0) {
+					if (CollPosition.Level == CATEGORY_LEVEL_BEING_SEARCHED) {
+						/* Indicate that there is no more to do. */
+						SignalFlag &= ~SIGNAL_MORE_TO_DO;
+						break;
+					}
+				}
+
+				//if (NOTEID_CATEGORY & EntryID) continue;
+
+//				if (entry_indent != MAIN_TOPIC_INDENT) continue;
 
 				/* Call a local function to print the summary buffer. */
 				if (error = PrintSummary(pSummary))
@@ -440,6 +572,8 @@ public:
 
 			/* Loop if the end of the collection has not been reached because the buffer
 			was full.  */
+			if (FirstTime)
+				FirstTime = FALSE;
 
 		} while (SignalFlag & SIGNAL_MORE_TO_DO);
 
@@ -460,6 +594,15 @@ public:
 			NotesTermThread();
 			return;
 		}
+
+		if (cleanup & FREE_KEY1)
+			free(Key1);
+
+		if (cleanup & FREE_TRANSLATEDKEY)
+			free(TranslatedKey);
+		
+		if (cleanup & FREE_PKEY)
+			free(pKey);
 		NotesTermThread();
 		
 	}
@@ -521,7 +664,7 @@ private:
 	std::string dbName;
 	std::string viewName;
 	std::string category;
-	std::string find;
+	std::string findByKey;
 	
 
 };
@@ -533,7 +676,7 @@ NAN_METHOD(GetViewAsync) {
 	Local<Object> viewParam = (info[1]->ToObject());
 	Local<Value> viewKey = String::NewFromUtf8(isolate, "view");
 	Local<Value> catKey = String::NewFromUtf8(isolate, "category");
-	Local<Value> findKey = String::NewFromUtf8(isolate, "find");
+	Local<Value> findKey = String::NewFromUtf8(isolate, "findByKey");
 	Local<Value> serverKey = String::NewFromUtf8(isolate, "server");
 	Local<Value> databaseKey = String::NewFromUtf8(isolate, "database");
 	Local<Value> serverVal = param->Get(serverKey);
@@ -543,13 +686,13 @@ NAN_METHOD(GetViewAsync) {
 	
 	
 	std::string catStr;
-	std::string findStr;
+	std::string findByKeyStr;
 
 	
 	if (viewParam->Has(findKey)) {
 		Local<Value> findVal = viewParam->Get(findKey);
 		String::Utf8Value find(findVal->ToString());
-		findStr = std::string(*find);
+		findByKeyStr = std::string(*find);
 	}	
 	if (viewParam->Has(catKey)) {
 		Local<Value> catVal = viewParam->Get(catKey);
@@ -573,5 +716,5 @@ NAN_METHOD(GetViewAsync) {
 	
 	Callback *callback = new Callback(info[2].As<Function>());
 
-	AsyncQueueWorker(new ViewWorker(callback, serverStr, dbStr, viewStr,catStr,findStr));
+	AsyncQueueWorker(new ViewWorker(callback, serverStr, dbStr, viewStr,catStr,findByKeyStr));
 }
