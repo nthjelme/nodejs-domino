@@ -25,14 +25,17 @@
 *******************************************************************************/
 
 #include <nan.h>
-#include "document_async.h"  
+#include "view_async.h"  
 #include "DocumentItem.h"
 #include "DataHelper.h"
-#include <lncppapi.h>
 #include <iostream>
 #include <map>
 #include <iterator>
 #include <vector>
+#include <nsfdb.h>
+#include <nif.h>
+#include <osmem.h>
+#include <miscerr.h>
 #include <osmisc.h>
 
 #define     CATEGORY_LEVEL_BEING_SEARCHED 0
@@ -265,7 +268,10 @@ class ViewWorker : public AsyncWorker {
 public:
 	ViewWorker(Callback *callback, std::string serverName, std::string dbName, std::string viewName,std::string category,std::string findByKey)
 		: AsyncWorker(callback), serverName(serverName), dbName(dbName), viewName(viewName),category(category),findByKey(findByKey) {}
-	~ViewWorker() {}
+	~ViewWorker() {
+		view.clear();
+
+	}
 
 	// Executed inside the worker-thread.
 	// It is not safe to access V8, or V8 data structures

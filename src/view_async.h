@@ -28,6 +28,7 @@
 #define ASYNC_VIEW_ASYNC_H_
 
 #include <nan.h>
+#include "global.h"
 
 NAN_METHOD(GetViewAsync);
 
