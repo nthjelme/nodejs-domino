@@ -62,7 +62,7 @@ using Nan::To;
 std::vector<std::vector<DocumentItem *>> view;
 
 
-STATUS PrintSummary(BYTE *pSummary)
+STATUS PrintSummary(BYTE *pSummary,WORD entry_indent)
 
 /* This function prints the items in the summary for one
 entry in a collection.
@@ -88,7 +88,7 @@ value of item #3
 	/* Local constants */
 
 #define  MAX_ITEMS          20
-#define  MAX_ITEM_LEN       100
+#define  MAX_ITEM_LEN       255
 #define MAX_ITEM_NAME_LEN   100
 #define  DATATYPE_SIZE      sizeof(USHORT)
 #define  ITEM_LENGTH_SIZE   sizeof(USHORT)
@@ -113,7 +113,7 @@ value of item #3
 	
 	USHORT      i;                  /* counter for loop over items */
 	ITEM    Items[MAX_ITEMS];       /* Stores the array of ITEMs */
-	char    ItemText[MAX_ITEM_LEN]; /* Text rendering of item value */
+	char   * ItemText;				 /* Text rendering of item value */
 	char    ItemName[MAX_ITEM_NAME_LEN];/* Zero terminated item name */
 	NUMBER  NumericItem;            /* a numeric item */
 	TIMEDATE   TimeItem;            /* a time/date item */
@@ -123,6 +123,11 @@ value of item #3
 	double dateTimeValue;
 
 	std::vector<DocumentItem*> column;
+	DocumentItem  *di_indent = new DocumentItem();
+	di_indent->type = 2;
+	di_indent->name = "@indent";
+	di_indent->numberValue = entry_indent;
+	column.push_back(di_indent);
 
 										/* pSummaryPos points to the beginning of the summary buffer. Copy
 										the ITEM_TABLE header at the beginning of the summary buffer
@@ -182,7 +187,9 @@ value of item #3
 			/* Extract a text item from the pSummary. */
 
 			case TYPE_TEXT:
+				ItemText = (char*)malloc(ValueLength + 1);
 				memcpy(ItemText, pSummaryPos, ValueLength);
+				
 				ItemText[ValueLength] = '\0';
 			
 				char buf[MAXWORD];
@@ -191,6 +198,7 @@ value of item #3
 				di->stringValue = buf;
 				di->type = 1;
 				column.push_back(di);
+				free(ItemText);
 				break;
 
 			/* Extract a text list item from the pSummary. */
@@ -253,6 +261,7 @@ value of item #3
 		/* End of loop that is extracting each item in the pSummary. */
 		//viewResult.push_back(doc2);
 		
+		
 
 	}
 	view.push_back(column);
@@ -292,6 +301,7 @@ public:
 		DWORD					EntriesFound;        /* number of entries found */
 		ITEM_TABLE				ItemTable;           /* table in pSummary buffer */
 		WORD					SignalFlag;          /* signal and share warning flags */		
+		WORD				    entry_indent;            			   /* "indent level" of entry */
 		STATUS					error = NOERROR;     /* return status from API calls */
 		BOOL					FirstTime = TRUE;
 		char					*pTemp, *pKey;
@@ -472,7 +482,7 @@ public:
 				NAVIGATE_NEXT,      /* order to use when reading */
 				number_match,
 				READ_MASK_NOTEID +  /* info we want */
-				//READ_MASK_INDENTLEVELS +
+				READ_MASK_INDENTLEVELS +
 				//READ_MASK_INDEXPOSITION+
 				READ_MASK_SUMMARY,
 				&hBuffer,           /* handle to info buffer (return)  */
@@ -512,7 +522,7 @@ public:
 
 			for (DWORD i = 1; i <= EntriesFound; i++)
 			{
-
+				
 				/* Get the ID of this entry. */
 
 				memcpy(&EntryID, pBuffer, sizeof(EntryID));
@@ -521,10 +531,12 @@ public:
 
 				pBuffer += sizeof(EntryID);
 
-				/* get ident level of entry
+				/* get ident level of entry*/
 				entry_indent = *(WORD*)pBuffer;
 				pBuffer += sizeof(WORD);
-
+				
+				
+				/*
 				entry_index_size = COLLECTIONPOSITIONSIZE
 				((COLLECTIONPOSITION*)pBuffer);
 				*/
@@ -538,7 +550,15 @@ public:
 				pSummary = pBuffer;
 				pBuffer += ItemTable.Length;
 
+			    /*if (NOTEID_CATEGORY & EntryID) {
+					entry_indent = 0;
+				}
+				else {
+					entry_indent = 1;
+				}*/
+
 				if (category.size() > 0) {
+					
 					if (CollPosition.Level == CATEGORY_LEVEL_BEING_SEARCHED) {
 						/* Indicate that there is no more to do. */
 						SignalFlag &= ~SIGNAL_MORE_TO_DO;
@@ -551,7 +571,7 @@ public:
 //				if (entry_indent != MAIN_TOPIC_INDENT) continue;
 
 				/* Call a local function to print the summary buffer. */
-				if (error = PrintSummary(pSummary))
+				if (error = PrintSummary(pSummary,entry_indent))
 				{
 					printf("error printsummary\n");
 					OSUnlockObject(hBuffer);
