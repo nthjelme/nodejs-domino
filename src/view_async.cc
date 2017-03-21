@@ -239,7 +239,7 @@ value of item #3
 				}	
 				di->type = 4;
 				column.push_back(di);
-				break;/
+				break;
 
 			/* Extract a number item from the pSummary. */
 			case TYPE_NUMBER:
