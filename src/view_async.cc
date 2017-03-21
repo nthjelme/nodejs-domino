@@ -34,6 +34,7 @@
 #include <vector>
 #include <nsfdb.h>
 #include <nif.h>
+#include <textlist.h>
 #include <osmem.h>
 #include <miscerr.h>
 #include <osmisc.h>
@@ -118,6 +119,12 @@ value of item #3
 	char    ItemName[MAX_ITEM_NAME_LEN];/* Zero terminated item name */
 	NUMBER  NumericItem;            /* a numeric item */
 	TIMEDATE   TimeItem;            /* a time/date item */
+
+	USHORT  ListCount; /* number of entries in a text list */
+	char *ListEntry;   /* pointer to list entry */
+	WORD ListLen;      /* total length of text list */
+	WORD EntryLen;     /* length of one entry */
+	STATUS  error;
 	
 	time_t rawtime;
 	double dtime;
@@ -210,13 +217,29 @@ value of item #3
 			/* Extract a text list item from the pSummary. */
 
 			case TYPE_TEXT_LIST:
-				printf("is text list, not (yet) supported");
-				/*if (error = ExtractTextList(
-					pSummaryPos,
-					ItemText))
-					return (ERR(error));
-				break;
-				*/
+
+
+				memcpy(&ListCount, pSummaryPos, sizeof(ListCount));
+				ListLen = 0;
+				for (WORD n = 0; n < ListCount; n++)
+				{
+					error = ListGetText(
+						pSummaryPos,
+						FALSE, /* DataType not prepended to list */
+						n,
+						&ListEntry,
+						&EntryLen);
+					if (error) {
+						return (ERR(error));
+					}					
+					char *buf = (char* )malloc(EntryLen + 1);					
+					OSTranslate(OS_TRANSLATE_LMBCS_TO_UTF8, ListEntry, EntryLen, buf, MAXWORD);					
+					di->vectorStrValue.push_back(buf);
+					
+				}	
+				di->type = 4;
+				column.push_back(di);
+				break;/
 
 			/* Extract a number item from the pSummary. */
 			case TYPE_NUMBER:
@@ -294,9 +317,7 @@ public:
 	// should go on `this`.
 	void Execute() {
 
-		WORD					cleanup = DO_NOTHING;
-		OID						tempOID;
-		NOTEHANDLE				note_handle2;
+		WORD					cleanup = DO_NOTHING;		
 		DBHANDLE				hDB;                    /* handle of the database */
 		NOTEID					ViewID;              /* note id of the view */
 		HCOLLECTION				hCollection;         /* collection handle */
@@ -498,7 +519,7 @@ public:
 				number_match,
 				READ_MASK_NOTEID +  /* info we want */
 				READ_MASK_INDENTLEVELS +
-				READ_MASK_NOTEUNID+
+				READ_MASK_NOTEUNID+		
 				READ_MASK_SUMMARY,
 				&hBuffer,           /* handle to info buffer (return)  */
 				NULL,               /* length of info buffer (return) */
