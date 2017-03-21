@@ -281,8 +281,8 @@ value of item #3
 
 class ViewWorker : public AsyncWorker {
 public:
-	ViewWorker(Callback *callback, std::string serverName, std::string dbName, std::string viewName,std::string category,std::string findByKey,boolean exact)
-		: AsyncWorker(callback), serverName(serverName), dbName(dbName), viewName(viewName),category(category),findByKey(findByKey),exact(exact) {}
+	ViewWorker(Callback *callback, std::string serverName, std::string dbName, std::string viewName,std::string category,std::string findByKey,boolean exact,unsigned long max_matches)
+		: AsyncWorker(callback), serverName(serverName), dbName(dbName), viewName(viewName),category(category),findByKey(findByKey),exact(exact), max_matches(max_matches){}
 	~ViewWorker() {
 		view.clear();
 
@@ -322,6 +322,8 @@ public:
 		WORD					TranslatedKeyLen;
 		char					*TranslatedKey;      /* Translated string key */
 		char *error_text = (char *) malloc(sizeof(char) * 200);   
+
+		number_match = max_matches;         /* max number to read */
 		
 		if (error = NotesInitThread())
 		{			
@@ -376,7 +378,7 @@ public:
 		CollPosition.Level = 0;
 		CollPosition.Tumbler[0] = 0;
 
-		number_match = 0xFFFFFFFF;         /* max number to read */
+		
 		
 		if (category.length() > 0) {
 			error = NIFFindByName(hCollection, category.c_str(), FIND_CASE_INSENSITIVE, &CollPosition, &number_match);			
@@ -712,6 +714,7 @@ private:
 	std::string category;
 	std::string findByKey;
 	boolean exact;
+	unsigned long max_matches;
 	
 
 };
@@ -724,7 +727,8 @@ NAN_METHOD(GetViewAsync) {
 	Local<Value> viewKey = String::NewFromUtf8(isolate, "view");
 	Local<Value> catKey = String::NewFromUtf8(isolate, "category");
 	Local<Value> findKey = String::NewFromUtf8(isolate, "findByKey");
-	Local<Value> exact = String::NewFromUtf8(isolate, "exact");
+	Local<Value> exactKey = String::NewFromUtf8(isolate, "exact");
+	Local<Value> maxKey = String::NewFromUtf8(isolate, "max");
 	Local<Value> serverKey = String::NewFromUtf8(isolate, "server");
 	Local<Value> databaseKey = String::NewFromUtf8(isolate, "database");
 	Local<Value> serverVal = param->Get(serverKey);
@@ -736,14 +740,23 @@ NAN_METHOD(GetViewAsync) {
 	std::string catStr;
 	std::string findByKeyStr;
 	boolean exactMatch = false;
+	unsigned long max = 0xFFFFFFFF;
 
-	
+	if (viewParam->Has(maxKey)) {
+		Local<Value> maxVal = viewParam->Get(maxKey);
+		max = maxVal->NumberValue();
+	}
+
 	if (viewParam->Has(findKey)) {
 		Local<Value> findVal = viewParam->Get(findKey);
-		Local<Value> exactVal = viewParam->Get(exact);
+		if (viewParam->Has(exactKey)) {
+			Local<Value> exactVal = viewParam->Get(exactKey);
+			exactMatch = exactVal->BooleanValue();
+		}
+		
 		String::Utf8Value find(findVal->ToString());
 		findByKeyStr = std::string(*find);
-		exactMatch = exactVal->BooleanValue();		
+		
 
 	}	
 
@@ -769,5 +782,5 @@ NAN_METHOD(GetViewAsync) {
 	
 	Callback *callback = new Callback(info[2].As<Function>());
 
-	AsyncQueueWorker(new ViewWorker(callback, serverStr, dbStr, viewStr,catStr,findByKeyStr,exactMatch));
+	AsyncQueueWorker(new ViewWorker(callback, serverStr, dbStr, viewStr,catStr,findByKeyStr,exactMatch,max));
 }
