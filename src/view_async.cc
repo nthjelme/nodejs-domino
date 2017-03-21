@@ -47,6 +47,7 @@ using v8::Local;
 using v8::Number;
 using v8::Value;
 using v8::String;
+using v8::Boolean;
 using v8::Object;
 using v8::Array;
 using Nan::AsyncQueueWorker;
@@ -62,7 +63,7 @@ using Nan::To;
 std::vector<std::vector<DocumentItem *>> view;
 
 
-STATUS PrintSummary(BYTE *pSummary,WORD entry_indent)
+STATUS PrintSummary(BYTE *pSummary,WORD entry_indent,char *unid)
 
 /* This function prints the items in the summary for one
 entry in a collection.
@@ -128,6 +129,11 @@ value of item #3
 	di_indent->name = "@indent";
 	di_indent->numberValue = entry_indent;
 	column.push_back(di_indent);
+	DocumentItem  *di_unid = new DocumentItem();
+	di_unid->type = 1;
+	di_unid->name = "@unid";
+	di_unid->stringValue = unid;
+	column.push_back(di_unid);
 
 										/* pSummaryPos points to the beginning of the summary buffer. Copy
 										the ITEM_TABLE header at the beginning of the summary buffer
@@ -143,6 +149,7 @@ value of item #3
 	structures. Copy this array of ITEM structures into the global
 	Items[] array.
 	*/
+	
 	ItemCount = ItemTable.Items;
 	for (i = 0; i < ItemCount; i++)
 	{
@@ -157,8 +164,7 @@ value of item #3
 	converting the item value to printable text in ItemText.
 	*/
 
-	for (i = 0; i < ItemCount; i++)
-	{		
+	for (i = 0; i < ItemCount; i++)	{			
 		NameLength = Items[i].NameLength;
 		memcpy(ItemName, pSummaryPos, NameLength);
 		ItemName[NameLength] = '\0';
@@ -275,8 +281,8 @@ value of item #3
 
 class ViewWorker : public AsyncWorker {
 public:
-	ViewWorker(Callback *callback, std::string serverName, std::string dbName, std::string viewName,std::string category,std::string findByKey)
-		: AsyncWorker(callback), serverName(serverName), dbName(dbName), viewName(viewName),category(category),findByKey(findByKey) {}
+	ViewWorker(Callback *callback, std::string serverName, std::string dbName, std::string viewName,std::string category,std::string findByKey,boolean exact)
+		: AsyncWorker(callback), serverName(serverName), dbName(dbName), viewName(viewName),category(category),findByKey(findByKey),exact(exact) {}
 	~ViewWorker() {
 		view.clear();
 
@@ -289,6 +295,8 @@ public:
 	void Execute() {
 
 		WORD					cleanup = DO_NOTHING;
+		OID						tempOID;
+		NOTEHANDLE				note_handle2;
 		DBHANDLE				hDB;                    /* handle of the database */
 		NOTEID					ViewID;              /* note id of the view */
 		HCOLLECTION				hCollection;         /* collection handle */
@@ -296,7 +304,8 @@ public:
 		DHANDLE					hBuffer;             /* handle to buffer of info */
 		BYTE					*pBuffer;            /* pointer into info buffer */
 		BYTE			        *pSummary;           /* pointer into info buffer */
-		NOTEID					EntryID;             /* a collection entry id */		
+		NOTEID					EntryID;             /* a collection entry id */	
+		UNID					EntryUNID;			
 		DWORD					number_match;
 		DWORD					EntriesFound;        /* number of entries found */
 		ITEM_TABLE				ItemTable;           /* table in pSummary buffer */
@@ -440,8 +449,12 @@ public:
 			memcpy(pTemp, TranslatedKey, TranslatedKeyLen);
 			pTemp += TranslatedKeyLen;
 			
-
-			error = NIFFindByKey(hCollection, pKey, FIND_CASE_INSENSITIVE, &CollPosition, NULL);
+			if (exact) {
+				error = NIFFindByKey(hCollection, pKey, FIND_CASE_INSENSITIVE, &CollPosition, &number_match);
+			}
+			else {
+				error = NIFFindByName(hCollection, TranslatedKey, FIND_PARTIAL|FIND_CASE_INSENSITIVE, &CollPosition, &number_match);
+			}
 			if (ERR(error) == ERR_NOT_FOUND) {
 				SetErrorMessage("Note not found in the collection");
 				NIFCloseCollection(hCollection);
@@ -457,7 +470,7 @@ public:
 				NotesTermThread();
 				return;
 			}
-			number_match = 1;
+			
 		}
 		else {
 			FirstTime = FALSE;
@@ -483,7 +496,7 @@ public:
 				number_match,
 				READ_MASK_NOTEID +  /* info we want */
 				READ_MASK_INDENTLEVELS +
-				//READ_MASK_INDEXPOSITION+
+				READ_MASK_NOTEUNID+
 				READ_MASK_SUMMARY,
 				&hBuffer,           /* handle to info buffer (return)  */
 				NULL,               /* length of info buffer (return) */
@@ -528,15 +541,22 @@ public:
 				memcpy(&EntryID, pBuffer, sizeof(EntryID));
 
 				/* Advance the pointer over the note id. */
-
 				pBuffer += sizeof(EntryID);
+
+				
+				/* get UNID*/
+				memcpy(&EntryUNID, pBuffer, sizeof(EntryUNID));
+				pBuffer += sizeof(EntryUNID);
 
 				/* get ident level of entry*/
 				entry_indent = *(WORD*)pBuffer;
 				pBuffer += sizeof(WORD);
 				
-				
+				char unid_buffer[33];
+				snprintf(unid_buffer, 33, "%08X%08X%08X%08X", EntryUNID.File.Innards[1], EntryUNID.File.Innards[0], EntryUNID.Note.Innards[1], EntryUNID.Note.Innards[0]);				
+
 				/*
+
 				entry_index_size = COLLECTIONPOSITIONSIZE
 				((COLLECTIONPOSITION*)pBuffer);
 				*/
@@ -571,7 +591,7 @@ public:
 //				if (entry_indent != MAIN_TOPIC_INDENT) continue;
 
 				/* Call a local function to print the summary buffer. */
-				if (error = PrintSummary(pSummary,entry_indent))
+				if (error = PrintSummary(pSummary,entry_indent,unid_buffer))
 				{
 					printf("error printsummary\n");
 					OSUnlockObject(hBuffer);
@@ -691,6 +711,7 @@ private:
 	std::string viewName;
 	std::string category;
 	std::string findByKey;
+	boolean exact;
 	
 
 };
@@ -703,6 +724,7 @@ NAN_METHOD(GetViewAsync) {
 	Local<Value> viewKey = String::NewFromUtf8(isolate, "view");
 	Local<Value> catKey = String::NewFromUtf8(isolate, "category");
 	Local<Value> findKey = String::NewFromUtf8(isolate, "findByKey");
+	Local<Value> exact = String::NewFromUtf8(isolate, "exact");
 	Local<Value> serverKey = String::NewFromUtf8(isolate, "server");
 	Local<Value> databaseKey = String::NewFromUtf8(isolate, "database");
 	Local<Value> serverVal = param->Get(serverKey);
@@ -713,13 +735,18 @@ NAN_METHOD(GetViewAsync) {
 	
 	std::string catStr;
 	std::string findByKeyStr;
+	boolean exactMatch = false;
 
 	
 	if (viewParam->Has(findKey)) {
 		Local<Value> findVal = viewParam->Get(findKey);
+		Local<Value> exactVal = viewParam->Get(exact);
 		String::Utf8Value find(findVal->ToString());
 		findByKeyStr = std::string(*find);
+		exactMatch = exactVal->BooleanValue();		
+
 	}	
+
 	if (viewParam->Has(catKey)) {
 		Local<Value> catVal = viewParam->Get(catKey);
 		String::Utf8Value cat(catVal->ToString());
@@ -742,5 +769,5 @@ NAN_METHOD(GetViewAsync) {
 	
 	Callback *callback = new Callback(info[2].As<Function>());
 
-	AsyncQueueWorker(new ViewWorker(callback, serverStr, dbStr, viewStr,catStr,findByKeyStr));
+	AsyncQueueWorker(new ViewWorker(callback, serverStr, dbStr, viewStr,catStr,findByKeyStr,exactMatch));
 }
