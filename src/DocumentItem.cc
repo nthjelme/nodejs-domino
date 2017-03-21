@@ -99,9 +99,8 @@ std::vector<DocumentItem *> unpack_document(v8::Local<v8::Object> & document) {
 				
 			}
 		}
-		else if (val->IsNumber()) {
-			Local<Number> numVal = val->ToNumber();
-			di->numberValue = numVal->NumberValue();
+		else if (val->IsNumber()) {			
+			di->numberValue = val->NumberValue();
 			di->name = (char*)malloc(key.size() + 1);
 			if (di->name) {
 				memcpy(di->name, key.c_str(), key.size());
