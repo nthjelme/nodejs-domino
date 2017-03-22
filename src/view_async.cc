@@ -304,7 +304,7 @@ value of item #3
 
 class ViewWorker : public AsyncWorker {
 public:
-	ViewWorker(Callback *callback, std::string serverName, std::string dbName, std::string viewName,std::string category,std::string findByKey,boolean exact,unsigned long max_matches)
+	ViewWorker(Callback *callback, std::string serverName, std::string dbName, std::string viewName,std::string category,std::string findByKey,bool exact,unsigned long max_matches)
 		: AsyncWorker(callback), serverName(serverName), dbName(dbName), viewName(viewName),category(category),findByKey(findByKey),exact(exact), max_matches(max_matches){}
 	~ViewWorker() {
 		view.clear();
@@ -734,7 +734,7 @@ private:
 	std::string viewName;
 	std::string category;
 	std::string findByKey;
-	boolean exact;
+	bool exact;
 	unsigned long max_matches;
 	
 
@@ -760,7 +760,7 @@ NAN_METHOD(GetViewAsync) {
 	
 	std::string catStr;
 	std::string findByKeyStr;
-	boolean exactMatch = false;
+	bool exactMatch = false;
 	unsigned long max = 0xFFFFFFFF;
 
 	if (viewParam->Has(maxKey)) {
