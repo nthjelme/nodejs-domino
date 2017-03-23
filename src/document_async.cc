@@ -92,6 +92,11 @@ public:
 		STATUS   error = NOERROR;           /* return status from API calls */
 		char *error_text =  (char *) malloc(sizeof(char) * 200);   
 
+		if (unid.length() != 32) {
+			SetErrorMessage("Not a valid unid.");
+			return;
+		}
+		
 		if (error = NotesInitThread())
 		{
 			DataHelper::GetAPIError(error,error_text);
@@ -105,24 +110,7 @@ public:
 			NotesTermThread();
 		}
 		
-		char unid_buffer[33];
-		strncpy(unid_buffer, unid.c_str(), 32);
-		
-		unid_buffer[32] = '\0';
-	
-		if (unid.length() == 32)
-		{	
-			/* Note part second, reading backwards in buffer */
-			temp_unid.Note.Innards[0] = (DWORD)strtoul(unid_buffer + 24, NULL, 16);
-			unid_buffer[24] = '\0';
-			temp_unid.Note.Innards[1] = (DWORD)strtoul(unid_buffer + 16, NULL, 16);
-			unid_buffer[16] = '\0';
-
-			/* DB part first */
-			temp_unid.File.Innards[0] = (DWORD)strtoul(unid_buffer + 8, NULL, 16);
-			unid_buffer[8] = '\0';
-			temp_unid.File.Innards[1] = (DWORD)strtoul(unid_buffer, NULL, 16);
-		}
+		DataHelper::ToUNID(unid.c_str(), &temp_unid);
 
 		if (error = NSFNoteOpenByUNID(
 			db_handle,  /* database handle */
@@ -133,6 +121,7 @@ public:
 			DataHelper::GetAPIError(error,error_text);
 			SetErrorMessage(error_text);
 			NSFDbClose(db_handle);
+			return;
 		}
 
 
@@ -146,6 +135,7 @@ public:
 			SetErrorMessage(error_text);
 			NSFNoteClose(note_handle);
 			NSFDbClose(db_handle);
+			return;
 		}
 
 		if (error = NSFDbClose(db_handle))

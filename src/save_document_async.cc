@@ -28,11 +28,13 @@
 #include "save_document_async.h"
 #include "DocumentItem.h"
 #include "DataHelper.h"
-#include <lncppapi.h>
 #include <iostream>
 #include <map>
 #include <iterator>
 #include <vector>
+#include <nsfdb.h>
+#include <nif.h>
+#include <nsfnote.h>
 #include <osmisc.h>
 #include <ctime>
 #include <stdio.h>
@@ -73,8 +75,7 @@ public:
 		char *error_text = (char *)malloc(sizeof(char) * 200);
 
 		if (error = NotesInitThread())
-		{
-			//DataHelper::GetAPIError(error,error_text);
+		{			
 			SetErrorMessage("error init notes thread");
 		}
 
@@ -87,23 +88,8 @@ public:
 		if (unid.length() == 32) {
 			// edit document
 			isEdit = true;
-			const char * chrUNID = unid.c_str();
-			char unid_buffer[33];
-			strncpy(unid_buffer, chrUNID, 32);
-			unid_buffer[32] = '\0';
-			if (strlen(unid_buffer) == 32)
-			{
-				/* Note part second, reading backwards in buffer */
-				temp_unid.Note.Innards[0] = (DWORD)strtoul(unid_buffer + 24, NULL, 16);
-				unid_buffer[24] = '\0';
-				temp_unid.Note.Innards[1] = (DWORD)strtoul(unid_buffer + 16, NULL, 16);
-				unid_buffer[16] = '\0';
 
-				/* DB part first */
-				temp_unid.File.Innards[0] = (DWORD)strtoul(unid_buffer + 8, NULL, 16);
-				unid_buffer[8] = '\0';
-				temp_unid.File.Innards[1] = (DWORD)strtoul(unid_buffer, NULL, 16);
-			}
+			DataHelper::ToUNID(unid.c_str(), &temp_unid);
 
 			if (error = NSFNoteOpenByUNID(
 				db_handle,  /* database handle */
