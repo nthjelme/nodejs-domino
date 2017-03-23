@@ -30,6 +30,7 @@
 #include "view_async.h"
 #include "replicate_database_async.h"
 #include "makeresponse_document.h"
+#include "delete_document_async.h"
 #include <iostream>
 
 using v8::FunctionTemplate;
@@ -67,10 +68,10 @@ NAN_MODULE_INIT(InitAll) {
 	Set(target, New<String>("saveDocumentAsync").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(SaveDocumentAsync)).ToLocalChecked());
 	
-	/*
+	
 	Set(target, New<String>("deleteDocumentAsync").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(DeleteDocumentAsync)).ToLocalChecked());
-	*/
+	
 	Set(target, New<String>("makeResponseDocumentAsync").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(MakeResponseDocumentAsync)).ToLocalChecked());
 	/*

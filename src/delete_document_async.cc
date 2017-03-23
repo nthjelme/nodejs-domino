@@ -26,7 +26,10 @@
 
 #include <nan.h>
 #include "delete_document_async.h"
-#include <lncppapi.h>
+#include "DataHelper.h"
+#include "global.h"
+#include <nsfnote.h>
+#include <nsfdb.h>
 #include <iostream>
 #include <osmisc.h>
 
@@ -56,34 +59,53 @@ public:
 	// here, so everything we need for input and output
 	// should go on `this`.
 	void Execute() {
-		LNSetThrowAllErrors(TRUE);
+		DBHANDLE    db_handle;      /* handle of source database */
+		UNID note_unid;		
+		NOTEID note_id;
+		STATUS   error = NOERROR;           /* return status from API calls */
+		char *error_text = (char *)malloc(sizeof(char) * 200);
 
-		LNNotesSession session;
-		try {
+		if (unid.length() != 32) {
+			SetErrorMessage("Not a valid unid.");
+			return;
+		}
 
-			session.InitThread();				
-			LNItemArray items;
-			LNDatabase Db;
-			session.GetDatabase(dbName.c_str(), &Db, serverName.c_str());
-				
-			Db.Open();
-			const LNString * lnstrUNID = new LNString(unid.c_str());
-			//Get UNID *
-			LNUniversalID * lnUNID = new LNUniversalID(*lnstrUNID);
-			const UNIVERSALNOTEID * unidUNID = lnUNID->GetUniversalID();
-			LNDocument			  Doc;
-			Db.GetDocument(unidUNID, &Doc);
-			Db.DeleteDocument(&Doc);
-			session.TermThread();
+		if (error = NotesInitThread())
+		{
+			DataHelper::GetAPIError(error, error_text);
+			SetErrorMessage(error_text);
 		}
-		catch (LNSTATUS Lnerror) {
-			char ErrorBuf[512];
-			LNGetErrorMessage(Lnerror, ErrorBuf, 512);
-			if (session.IsInitialized()) {
-				session.TermThread();
-			}
-			SetErrorMessage(ErrorBuf);			
+
+		if (error = NSFDbOpen(dbName.c_str(), &db_handle))
+		{
+			DataHelper::GetAPIError(error, error_text);
+			SetErrorMessage(error_text);
+			NotesTermThread();
+			return;
 		}
+		DataHelper::ToUNID(unid.c_str(), &note_unid);
+
+		if (error = NSFDbGetNoteInfoByUNID(
+			db_handle,  /* database handle */
+			&note_unid, /* UniD */
+			&note_id,
+			NULL,
+			NULL,
+			NULL))       
+		{
+			DataHelper::GetAPIError(error, error_text);
+			SetErrorMessage(error_text);
+			NSFDbClose(db_handle);
+			return;
+		}
+		
+		if (error = NSFNoteDelete(db_handle, note_id, 0)) {
+			DataHelper::GetAPIError(error, error_text);
+			SetErrorMessage(error_text);
+		}
+		NSFDbClose(db_handle);
+
+		NotesTermThread();
 	}
 
 	void HandleOKCallback() {
