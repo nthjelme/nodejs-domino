@@ -8,7 +8,7 @@ function Domino() {
 		var localDb = db;
 		
 		var replicate = function(callback) {
-			callback("Not implemented",undefined);
+			callback({error:"Not implemented"},undefined);
 			/*dominoDriver.replicateAsync(db,function(error,result) {
 				callback(error,result);
 			});*/
@@ -57,9 +57,11 @@ function Domino() {
 		};
 		
 		var getResponses = function(doc,callback) {
+			callback({error: "Not implemented"},undefined)
+			/*
 			dominoDriver.getResponseDocumentsAsync(localDb,doc["@unid"], function(error,result) {
 					callback(error,result);
-			});
+			});*/
 		};
 		
 		var view = function(view,callback) {
@@ -77,6 +79,12 @@ function Domino() {
 		return localDb;
 			
 	};
+	
+	process.on('SIGINT', function() {
+		dominoDriver.termSession();  
+		process.exit();
+	}
+	
 	dbObj.use = use;
 	
 	return dbObj;
