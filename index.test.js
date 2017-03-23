@@ -2,7 +2,7 @@ var expect = require('chai').expect;
 var dominoNsf = require('./index');
 var domino = dominoNsf();
 
-var db = domino.use({server:'',database:'test.nsf'});
+var db = domino.use({server:'',database:'kaskjer2.nsf'});
 
 var doc = {
 	"Form":"Test",
@@ -35,8 +35,8 @@ describe('domino-nsf',function() {
 		it('should have a date property that equals ', function() {
 			expect(savedDocument).to.have.property('date').to.eql(new Date(0));
 		});
-		it('shoud have a Name property that equals ["Test"]',function() {
-			expect(savedDocument).to.have.property('Name').to.eql(["Test"]);
+		it('shoud have a Name property that equals "Test"',function() {
+			expect(savedDocument).to.have.property('Name').to.eql("Test");
 		});
 		it('shoud have a array property that equals ["a","b","c"]',function() {
 			expect(savedDocument).to.have.property('array').to.eql(["a","b","c"]);
@@ -65,8 +65,8 @@ describe('domino-nsf',function() {
 		it('should have a date property that equals ', function() {
 			expect(document).to.have.property('date').to.eql(new Date(0));
 		});
-		it('shoud have a Name property that equals ["Test"]',function() {
-			expect(document).to.have.property('Name').to.eql(["Test"]);
+		it('shoud have a Name property that equals "Test"',function() {
+			expect(document).to.have.property('Name').to.eql("Test");
 		});
 		it('shoud have a array property that equals ["a","b","c"]',function() {
 			expect(document).to.have.property('array').to.eql(["a","b","c"]);
