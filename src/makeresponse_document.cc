@@ -26,9 +26,13 @@
 
 #include <nan.h>
 #include "makeresponse_document.h"
-#include <lncppapi.h>
-#include <iostream>
+#include "DocumentItem.h"
+#include "DataHelper.h"
+#include <nsfdb.h>
+#include <nif.h>
+#include <nsfnote.h>
 #include <osmisc.h>
+#include <iostream>
 
 using v8::Function;
 using v8::Local;
@@ -45,6 +49,7 @@ using Nan::New;
 using Nan::Null;
 using Nan::To;
 
+
 class MakeResponseDocumentWorker : public AsyncWorker {
 public:
 	MakeResponseDocumentWorker(Callback *callback, std::string serverName, std::string dbName, std::string unid, std::string responseUnid)
@@ -56,42 +61,100 @@ public:
 	// here, so everything we need for input and output
 	// should go on `this`.
 	void Execute() {
-		LNSetThrowAllErrors(TRUE);
+		DBHANDLE    db_handle;      /* handle of source database */
+		STATUS   error = NOERROR;           /* return status from API calls */
+		char *error_text = (char *)malloc(sizeof(char) * 200);
+		LIST       ListHdr;
+		UNID       NoteUNID;
+		UNID	   ResponseUNID;		
+		NOTEHANDLE note_handle;
+		
+		/*  block of memory to hold the response reference list */
+		char       *buf;
 
-		LNNotesSession session;
-		try {
+		buf = (char *)malloc(sizeof(LIST) + sizeof(UNID));
 
-			session.InitThread();
-			LNItemArray items;
-			LNDatabase Db;
-			session.GetDatabase(dbName.c_str(), &Db, serverName.c_str());
-
-			Db.Open();
-			const LNString * lnstrUNID = new LNString(unid.c_str());
-			const LNString * lnstrResponseUNID = new LNString(responseUnid.c_str());
-			//Get UNID *
-			LNUniversalID * lnUNID = new LNUniversalID(*lnstrUNID);
-			LNUniversalID * lnResUNID = new LNUniversalID(*lnstrResponseUNID);
-			const UNIVERSALNOTEID * unidUNID = lnUNID->GetUniversalID();
-			const UNIVERSALNOTEID * parentUNID = lnResUNID->GetUniversalID();
-			LNDocument			  Doc;
-			LNDocument			  ParentDoc;
-			Db.GetDocument(unidUNID, &Doc);
-			Doc.Open();
-			Db.GetDocument(parentUNID, &ParentDoc);
-			Doc.MakeResponse(ParentDoc);
-			Doc.Save();
-			Doc.Close();
-			session.TermThread();
+		if (buf == NULL)
+		{
+			SetErrorMessage("malloc failed");
+			return;
 		}
-		catch (LNSTATUS Lnerror) {
-			char ErrorBuf[512];
-			LNGetErrorMessage(Lnerror, ErrorBuf, 512);						
-			if (session.IsInitialized()) {
-				session.TermThread();				
-			}
-			SetErrorMessage(ErrorBuf);			
+
+		if (error = NotesInitThread())
+		{			
+			SetErrorMessage("error init notes thread");
 		}
+
+		// create response unid
+		if (unid.length() != 32) {
+			SetErrorMessage("Not valid parent document unid");
+			return;
+		}
+		// create response unid
+		if (responseUnid.length() != 32) {
+			SetErrorMessage("Not valid response unid");
+			return;
+		}
+
+	
+		DataHelper::ToUNID(unid.c_str(), &NoteUNID);
+		DataHelper::ToUNID(responseUnid.c_str(), &ResponseUNID);
+	
+		/* Initialize the LIST header part of the response reference list */
+		ListHdr.ListEntries = (USHORT)1;
+
+		/* Pack the LIST and the UNID members of the Noteref list into
+			a memory block.
+		*/
+		memcpy(buf, (char*)&ListHdr, sizeof(LIST));
+		memcpy((buf + sizeof(LIST)), (char*)&NoteUNID, sizeof(UNID));
+
+		if (error = NSFDbOpen(dbName.c_str(), &db_handle))
+		{				
+			SetErrorMessage("error opening database");
+		}
+
+		if (error = NSFNoteOpenByUNID(
+			db_handle,  /* database handle */
+			&ResponseUNID, /* note ID */
+			(WORD)0,                      /* open flags */
+			&note_handle))          /* note handle (return) */
+		{
+			DataHelper::GetAPIError(error, error_text);
+			SetErrorMessage(error_text);
+			NSFDbClose(db_handle);
+		}
+	
+
+		if (error = NSFItemAppend(note_handle,
+			ITEM_SUMMARY,
+			FIELD_LINK,         /* $REF */
+			(WORD)strlen(FIELD_LINK),
+			TYPE_NOTEREF_LIST,  /* data type */
+			buf,                /* populated RESPONSE */
+			(DWORD)(sizeof(LIST) + sizeof(UNID))))
+		{
+			NSFNoteClose(note_handle);
+			SetErrorMessage("Failed to create response document");
+			return;
+		}
+
+		free(buf);
+
+		/* Update the note  */
+		if (error = NSFNoteUpdate(note_handle, 0))
+		{
+			NSFNoteClose(note_handle);
+			DataHelper::GetAPIError(error, error_text);
+			SetErrorMessage(error_text);
+			return;
+		}
+
+		error = NSFNoteClose(note_handle);
+
+		NSFDbClose(db_handle);
+		
+		NotesTermThread();	
 	}
 
 	void HandleOKCallback() {

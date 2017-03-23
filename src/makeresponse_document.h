@@ -28,6 +28,7 @@
 #define MAKERESPONSE_DOCUMENT_ASYNC_H_
 
 #include <nan.h>
+#include <global.h>
 
 NAN_METHOD(MakeResponseDocumentAsync);
 
