@@ -35,7 +35,7 @@
 #include <iterator>
 #include <vector>
 #include <global.h>
-
+#include <nsfdb.h>
 
 
 using v8::Local;
@@ -51,6 +51,7 @@ using Nan::To;
 class DataHelper {
 public:
 	static void GetAPIError(STATUS api_error, char * error_text);
+	static void ToUNID(const char *unidStr, UNID * unid); 
 };
 
 #endif  // ITEM_VALUE_H_
