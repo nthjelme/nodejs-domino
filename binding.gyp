@@ -6,6 +6,8 @@
         "src/addon.cc",        
 		"src/document_async.cc",
 		"src/save_document_async.cc",
+		"src/makeresponse_document.cc",
+		"src/delete_document_async.cc",
 		"src/view_async.cc",		
 		"src/DocumentItem.cc",
 		"src/DataHelper.cc"
