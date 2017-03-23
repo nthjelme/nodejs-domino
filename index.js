@@ -83,7 +83,7 @@ function Domino() {
 	process.on('SIGINT', function() {
 		dominoDriver.termSession();  
 		process.exit();
-	}
+	});
 	
 	dbObj.use = use;
 	
