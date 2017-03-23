@@ -26,12 +26,16 @@ var db = domino.use({server:'',database:'database.nsf'});
 
 db.get("documentUNID",function(error,document) {
 	console.log("document",document);
-};
+});
 
 db.insert(doc,function(error,document) {
 	// returns the saved document
 	console.log("document",document);
-};
+});
+
+db.makeResponse(doc,parentDoc,function(err,res) {
+	
+})
 
 db.view({view:"People",category:""},function(err,view) {
 	  console.log("view result",view);
@@ -40,6 +44,9 @@ db.view({view:"People",category:""},function(err,view) {
 db.del("documentUNID",function(error,result) {
 	console.log("result",result);
 });
+
+// to end session call
+domino.termSession(); 
 ```
 
 ## Development and Contribution
