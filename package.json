@@ -16,10 +16,12 @@
     "nsf"
   ],
   "os": [
-    "win32"
+    "win32",
+    "linux"
   ],
   "cpu": [
-    "ia32"
+    "ia32",
+    "x64"
   ],
   "license": "MIT",
   "main": "index.js",
