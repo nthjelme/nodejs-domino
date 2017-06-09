@@ -14,7 +14,7 @@
       ],
       "conditions": [
 	["OS==\"linux\"",{
-	  "include_dirs": ["<!(node -e \"require('nan')\")","/opt/ibm/domino/notesapi/include"],	  
+	  "include_dirs": ["<!(node -e \"require('nan')\")","/opt/ibm/notesapi/include"],	  
 	  "libraries": [ "/opt/ibm/domino/notes/latest/linux/libnotes.so"],
 	  "defines": [ "GCC3", "GCC4","ND64","NDUNIX64", "UNIX", "LINUX64","LINUX", "LINUX86","W32","LINUX86_64", "W","GCC_LBLB_NOT_SUPPORTED","LONGIS64BIT","DTRACE", "PTHREAD_KERNEL" "_REENTRANT", "USE_THREADSAFE_INTERFACES","_POSIX_THREAD_SAFE_FUNCTIONS","HANDLE_IS_32BITS", "HAS_IOCP", "HAS_BOOL", "HAS_DLOPEN", "USE_PTHREAD_INTERFACES", "LARGE64_FILES", "_LARGEFILE_SOURCE", "_LARGEFILE64_SOURCE","PRODUCTION_VERSION", "OVERRIDEDEBUG"],
 	  "cflags_cc!": [
