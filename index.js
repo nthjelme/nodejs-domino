@@ -84,7 +84,6 @@ function Domino() {
 		return localDb;
 
 	};
-	
 	process.on('SIGINT', function() {
 		dominoDriver.termSession();  
 		process.exit();
