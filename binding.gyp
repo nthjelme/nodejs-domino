@@ -10,7 +10,8 @@
 		"src/delete_document_async.cc",
 		"src/view_async.cc",		
 		"src/DocumentItem.cc",
-		"src/DataHelper.cc"
+		"src/DataHelper.cc",
+		"src/create_database.cc"
 	],
       "conditions": [
 	["OS==\"linux\"",{

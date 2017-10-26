@@ -31,6 +31,7 @@
 #include "replicate_database_async.h"
 #include "makeresponse_document.h"
 #include "delete_document_async.h"
+#include "create_database.h"
 #include <iostream>
 
 using v8::FunctionTemplate;
@@ -81,6 +82,9 @@ NAN_MODULE_INIT(InitAll) {
 	Set(target, New<String>("replicateDatabaseAsync").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(ReplicateDatabaseAsync)).ToLocalChecked());
 	*/	
+	Set(target, New<String>("createDatabase").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(createDatabase)).ToLocalChecked());
+
 	Set(target, New<String>("getViewAsync").ToLocalChecked(),
 	  GetFunction(New<FunctionTemplate>(GetViewAsync)).ToLocalChecked());
 	
