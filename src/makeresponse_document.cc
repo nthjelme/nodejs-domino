@@ -77,6 +77,7 @@ public:
 		if (buf == NULL)
 		{
 			SetErrorMessage("malloc failed");
+			free(error_text);
 			return;
 		}
 
@@ -88,11 +89,15 @@ public:
 		// create response unid
 		if (unid.length() != 32) {
 			SetErrorMessage("Not valid parent document unid");
+			free(error_text);
+			free(buf);
 			return;
 		}
 		// create response unid
 		if (responseUnid.length() != 32) {
 			SetErrorMessage("Not valid response unid");
+			free(error_text);
+			free(buf);
 			return;
 		}
 
@@ -136,6 +141,8 @@ public:
 		{
 			NSFNoteClose(note_handle);
 			SetErrorMessage("Failed to create response document");
+			free(error_text);
+			free(buf);
 			return;
 		}
 

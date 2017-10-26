@@ -94,6 +94,7 @@ public:
 
 		if (unid.length() != 32) {
 			SetErrorMessage("Not a valid unid.");
+			free(error_text);
 			return;
 		}
 		
@@ -121,6 +122,7 @@ public:
 			DataHelper::GetAPIError(error,error_text);
 			SetErrorMessage(error_text);
 			NSFDbClose(db_handle);
+			free(error_text);
 			return;
 		}
 
@@ -135,6 +137,7 @@ public:
 			SetErrorMessage(error_text);
 			NSFNoteClose(note_handle);
 			NSFDbClose(db_handle);
+			free(error_text);
 			return;
 		}
 
@@ -143,7 +146,7 @@ public:
 			DataHelper::GetAPIError(error,error_text);
 			SetErrorMessage(error_text);
 		}
-		
+		free(error_text);
 		NotesTermThread();
 		
 	}

@@ -19,9 +19,7 @@ using Nan::Null;
 using Nan::To;
 
 void pack_document(v8::Local<v8::Object> & target, std::vector<DocumentItem *> items) {	
-	for (std::size_t i = 0; i < items.size(); i++) {
-		DocumentItem *di = items[i];
-		
+	for (std::size_t i = 0; i < items.size(); i++) {		
 		if (items[i]->type == 1) {			
 			Nan::Set(target, New<v8::String>(items[i]->name).ToLocalChecked(), New<v8::String>(items[i]->stringValue).ToLocalChecked());
 		}
