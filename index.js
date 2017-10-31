@@ -7,6 +7,12 @@ function Domino() {
 	var termSession = function() {
 		dominoDriver.termSession();
 	};
+	
+	var createDatabase = function(dbName,callback) {
+		dominoDriver.createDatabase(dbName,function(response) {
+			callback(response);
+		});
+	};
 
 	var use = function(db) {
 		var localDb = db;
@@ -91,6 +97,7 @@ function Domino() {
 	
 	dbObj.use = use;
 	dbObj.termSession = termSession;
-
+	dbObj.createDatabase = createDatabase;
+	
 	return dbObj;
 };
