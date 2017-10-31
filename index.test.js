@@ -3,7 +3,7 @@ var dominoNsf = require('./index');
 var domino = dominoNsf();
 
 var db;
-
+var savedDocumentUnid = "";
 var doc = {
 	"Form":"Test",
 	"Name": "Test",
@@ -16,7 +16,10 @@ var doc = {
 describe('domino-nsf',function() {
 
 	before(function() {
-		db = domino.use({server:'',database:'test.nsf'});
+		domino.createDatabase("nodejs-domino.nsf",function(res) {
+			db = domino.use({server:'',database:'nodejs-domino.nsf'});
+		});
+		
 	});
 	after(function() {
 		domino.termSession();
@@ -30,6 +33,7 @@ describe('domino-nsf',function() {
 					done(err);
 				} else {
 					savedDocument = result;
+					savedDocumentUnid = result["@unid"];
 					done();
 				}
 			});
@@ -54,7 +58,7 @@ describe('domino-nsf',function() {
 	describe('get document', function() {
 		var document = {};
 		before(function(done) {
-			db.get("F2532D492B99860541258070007206E0",function(err,result) {
+			db.get(savedDocumentUnid,function(err,result) {
 				if (err) {
 					done(err);
 				} else {
@@ -80,5 +84,22 @@ describe('domino-nsf',function() {
 			expect(document).to.have.property('array').to.eql(["a","b","c"]);
 		});
 
+	});
+	
+	describe('delete document', function() {
+		var deleteResult = {};
+		before(function(done) {
+						db.del(savedDocumentUnid,function(err,result) {
+				if (err) {
+					done(err);
+				} else {
+					deleteResult = result;
+					done();
+				}
+			});
+		});
+		it('should return status property that equals "deleted"',function() {
+			expect(deleteResult).to.have.property('status').to.eql("deleted");
+		});
 	});
 });
