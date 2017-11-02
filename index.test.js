@@ -16,8 +16,14 @@ var doc = {
 describe('domino-nsf',function() {
 
 	before(function() {
-		domino.createDatabase("nodejs-domino.nsf",function(res) {
-			db = domino.use({server:'',database:'nodejs-domino.nsf'});
+		var dbObj = {
+			"database":"nodejs_domino.nsf",
+			"title":"Test database",
+			"server":""
+		}
+		domino.createDatabase(dbObj,function(error, database) {
+			console.log("error",error,"database",database);
+			db = domino.use(database);
 		});
 		
 	});

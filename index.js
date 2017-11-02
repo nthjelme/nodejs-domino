@@ -8,9 +8,9 @@ function Domino() {
 		dominoDriver.termSession();
 	};
 	
-	var createDatabase = function(dbName,callback) {
-		dominoDriver.createDatabase(dbName,function(response) {
-			callback(response);
+	var createDatabase = function(db,callback) {
+		dominoDriver.createDatabase(db,function(error,response) {
+			callback(error,response);
 		});
 	};
 

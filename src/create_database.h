@@ -30,6 +30,12 @@
 
 #include <nan.h>
 #include "global.h"
+#include <stdnames.h>
+#include "DataHelper.h"
+#include <nsfdb.h>
+#include <nsferr.h>
+#include <nsfnote.h>
+#include <misc.h>
 
 NAN_METHOD(createDatabase);
 
