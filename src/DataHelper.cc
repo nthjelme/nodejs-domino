@@ -3,7 +3,6 @@
 
 void DataHelper::GetAPIError(STATUS api_error, char * error_text)
 {
-	printf("get api error\n");
 	STATUS  string_id = ERR(api_error);
 	WORD    text_len;
 	
@@ -13,9 +12,8 @@ void DataHelper::GetAPIError(STATUS api_error, char * error_text)
 	text_len = OSLoadString(NULLHANDLE,
 		string_id,
 		error_text,
-		sizeof(error_text));
+		200);
 	return;
-
 }
 
 void DataHelper::ToUNID(const char *unidStr, UNID * Unid) {
