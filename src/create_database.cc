@@ -24,8 +24,7 @@ NAN_METHOD(createDatabase) {
     NOTEHANDLE  hIconNote;                         /* handle to the icon note */  
     char        db_info[NSF_INFO_SIZE];            /* database info buffer */
     char        set_db_flags[100] = "";            /* modified icon note flags */
-    bool        has_error;
-  
+    
     v8::Isolate* isolate = info.GetIsolate();
     Local<Object> param = (info[0]->ToObject());  
     Local<Value> dbKey = String::NewFromUtf8(isolate, "database");
@@ -42,7 +41,6 @@ NAN_METHOD(createDatabase) {
   
     if (error = NotesInitThread()) {
         DataHelper::GetAPIError(error, error_text);
-        has_error =true;  
         goto hasError;      
     }
 
@@ -50,18 +48,17 @@ NAN_METHOD(createDatabase) {
     if (error = NSFDbCreate (*db_name, DBCLASS_NOTEFILE, FALSE)) {     
         DataHelper::GetAPIError(error, error_text);
         NotesTermThread();
+        goto hasError;
     } 
   
     if (error = NSFDbOpen(*db_name, &db_handle)) {
         DataHelper::GetAPIError(error, error_text);
-        has_error =true;
         NotesTermThread();
         goto hasError;;
     }
 
     /* Get the output database information buffer */
     if (error = NSFDbInfoGet (db_handle, db_info)) {
-        has_error =true;
        NSFDbClose (db_handle);
        DataHelper::GetAPIError(error, error_text);		
        NotesTermThread();
@@ -73,7 +70,6 @@ NAN_METHOD(createDatabase) {
     if (error = NSFDbInfoSet (db_handle, db_info)) {
         NSFDbClose (db_handle);
         DataHelper::GetAPIError(error, error_text);
-        has_error =true;
         NotesTermThread();         
         goto hasError;;
     }
@@ -90,7 +86,6 @@ NAN_METHOD(createDatabase) {
         /* Set the DESIGN_FLAGS ($Flags) field  */
         if (error = NSFItemSetText ( hIconNote, DESIGN_FLAGS, set_db_flags, MAXWORD)) {			
             DataHelper::GetAPIError(error, error_text);
-            has_error =true;
             NSFNoteClose (hIconNote);
             NSFDbClose (db_handle);
             NotesTermThread();
@@ -100,7 +95,6 @@ NAN_METHOD(createDatabase) {
         /* Update the note in the database */
         if (error = NSFNoteUpdate (hIconNote, 0)) {        
             DataHelper::GetAPIError(error, error_text);
-		    has_error =true;
             NSFNoteClose (hIconNote);
             NSFDbClose (db_handle);
             NotesTermThread();
@@ -112,22 +106,23 @@ NAN_METHOD(createDatabase) {
   
     if (error = NSFDbClose (db_handle)) {
         DataHelper::GetAPIError(error, error_text);
-        has_error =true;
         NotesTermThread();
         goto hasError;
     }
   
     
-    hasError: 
+    hasError: if (error) {
         Nan::Set(errorObj, New<v8::String>("error").ToLocalChecked(), New<v8::String>(error_text).ToLocalChecked());		
+    }
 
     Callback *callback = new Callback(info[1].As<Function>());	
     Local<Object> resDoc = Nan::New<Object>();
     
-    Nan::Set(resDoc, New<v8::String>("database").ToLocalChecked(), dbVal);	
-    Nan::Set(resDoc, New<v8::String>("title").ToLocalChecked(), titleVal);
-    Nan::Set(resDoc, New<v8::String>("server").ToLocalChecked(), serverVal);		
-    
+    if (error == NOERROR) {
+        Nan::Set(resDoc, New<v8::String>("database").ToLocalChecked(), dbVal);	
+        Nan::Set(resDoc, New<v8::String>("title").ToLocalChecked(), titleVal);
+        Nan::Set(resDoc, New<v8::String>("server").ToLocalChecked(), serverVal);		
+    }
     
     
     free(error_text);
