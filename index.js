@@ -14,6 +14,12 @@ function Domino() {
 		});
 	};
 
+	var deleteDatabase = function(db,callback) {
+		dominoDriver.deleteDatabase(db,function(error,status) {
+			callback(error,status);
+		});
+	};
+
 	var use = function(db) {
 		var localDb = db;
 
@@ -98,6 +104,7 @@ function Domino() {
 	dbObj.use = use;
 	dbObj.termSession = termSession;
 	dbObj.createDatabase = createDatabase;
+	dbObj.deleteDatabase = deleteDatabase;
 	
 	return dbObj;
 };
