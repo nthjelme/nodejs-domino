@@ -11,23 +11,29 @@ var doc = {
 	"number": 10,
 	"array": ["a","b","c"]
 };
+var test_db = {
+	"database":"nodejs_domino.nsf",
+	"title":"Test database",
+	"server":""
+}
 
 
 describe('domino-nsf',function() {
 
 	before(function() {
-		var dbObj = {
-			"database":"nodejs_domino.nsf",
-			"title":"Test database",
-			"server":""
-		}
-		domino.createDatabase(dbObj,function(error, database) {
-			console.log("error",error,"database",database);
+		domino.createDatabase(test_db,function(error, database) {
+			if (error) {
+				console.error(error);
+			}
 			db = domino.use(database);
 		});
 		
 	});
+
 	after(function() {
+		domino.deleteDatabase(test_db,function(error,status) {
+
+		});
 		domino.termSession();
 	});
 
