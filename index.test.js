@@ -97,6 +97,25 @@ describe('domino-nsf',function() {
 		});
 
 	});
+
+	describe('search database', function() {
+		var searchResults = [];
+		before(function(done) {
+			db.search("SELECT *",function(err,result) {
+				if (err) {
+					done(err);
+				} else {
+					searchResults = result;
+					done();
+				}
+			});
+		});
+
+		it('expect a list of documents with length of 1',function() {
+			expect(searchResults).to.have.lengthOf(1);
+		});
+
+	});
 	
 	describe('delete document', function() {
 		var deleteResult = {};
