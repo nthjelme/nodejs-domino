@@ -11,7 +11,8 @@
 		"src/view_async.cc",		
 		"src/DocumentItem.cc",
 		"src/DataHelper.cc",
-		"src/create_database.cc"
+		"src/create_database.cc",
+		"src/delete_database.cc"
 	],
       "conditions": [
 	["OS==\"linux\"",{
