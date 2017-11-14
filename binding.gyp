@@ -12,7 +12,8 @@
 		"src/DocumentItem.cc",
 		"src/DataHelper.cc",
 		"src/create_database.cc",
-		"src/delete_database.cc"
+		"src/delete_database.cc",
+		"src/nsf_search.cc"
 	],
       "conditions": [
 	["OS==\"linux\"",{

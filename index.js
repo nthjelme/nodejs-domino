@@ -86,12 +86,19 @@ function Domino() {
 			});
 		};
 
+		var search = function(searchFormula,callback) {
+			dominoDriver.searchNsfAsync(localDb,searchFormula,function(err,result) {
+				callback(err,result);
+			});
+		}
+
 		localDb.get = get;
 		localDb.insert = insert;
 		localDb.del = deleteFn;
 		localDb.view = view;
 		localDb.replicate = replicate;
 		localDb.makeResponse = makeResponse;
+		localDb.search = search;
 
 		return localDb;
 

@@ -33,6 +33,7 @@
 #include "delete_document_async.h"
 #include "create_database.h"
 #include "delete_database.h"
+#include "nsf_search.h"
 #include <iostream>
 
 using v8::FunctionTemplate;
@@ -76,6 +77,9 @@ NAN_MODULE_INIT(InitAll) {
 	
 	Set(target, New<String>("makeResponseDocumentAsync").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(MakeResponseDocumentAsync)).ToLocalChecked());
+
+	Set(target, New<String>("searchNsfAsync").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(SearchNsfAsync)).ToLocalChecked());
 	/*
 	Set(target, New<String>("getResponseDocumentsAsync").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(GetResponseDocumentsAsync)).ToLocalChecked());
