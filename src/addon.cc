@@ -35,6 +35,11 @@
 #include "delete_database.h"
 #include "nsf_search.h"
 #include <iostream>
+#include "global.h"
+#include "nsfdb.h"
+#include "nsfdata.h"
+#include "osmisc.h"
+#include "osfile.h"
 
 using v8::FunctionTemplate;
 using v8::Handle;
@@ -60,6 +65,55 @@ void TermDominoSession(const Nan::FunctionCallbackInfo<v8::Value>& info) {
 	NotesTerm();
 }
 
+void sinitThread(const Nan::FunctionCallbackInfo<v8::Value>& info) {
+	STATUS					error = NOERROR;     /* return status from API calls */
+	char *error_text = (char *) malloc(sizeof(char) * 200);   
+		if (error = NotesInitThread())
+		{
+			DataHelper::GetAPIError(error,error_text);
+			printf("error: %s", error_text);
+		}
+}
+
+void stermThread(const Nan::FunctionCallbackInfo<v8::Value>& info) {
+	NotesTermThread();
+}
+
+void openDatabase(const Nan::FunctionCallbackInfo<v8::Value>& info) {
+	STATUS					error = NOERROR;     /* return status from API calls */
+	char *error_text = (char *) malloc(sizeof(char) * 200);   
+	DBHANDLE    db_handle;      /* handle of source database */
+	char *dbName ="test.nsf";
+	if (error = NSFDbOpen(dbName, &db_handle)) {
+			DataHelper::GetAPIError(error,error_text);
+			printf("error: %s", error_text);
+	}
+	USHORT dh = (USHORT) db_handle;
+  Local<Number> retval = Nan::New((double) dh);
+  info.GetReturnValue().Set(retval); 
+}
+
+void getDatabaseName(const Nan::FunctionCallbackInfo<v8::Value>& info) {
+	double value = info[0]->NumberValue();
+	STATUS					error = NOERROR;     /* return status from API calls */
+	char *error_text = (char *) malloc(sizeof(char) * 200);   
+	DBHANDLE    db_handle;      /* handle of source database */
+	
+	char       title[NSF_INFO_SIZE] = "";   /* database title */
+	unsigned short db_h = (unsigned short) value;
+	db_handle = (DHANDLE)db_h;
+	char       buffer[NSF_INFO_SIZE] = "";  /* database info buffer */
+	if (error = NSFDbInfoGet (db_handle, buffer))
+	{	
+		NSFDbClose (db_handle);	
+	}
+
+	NSFDbInfoParse (buffer, INFOPARSE_TITLE, title, NSF_INFO_SIZE - 1);
+	
+	info.GetReturnValue().Set(
+         Nan::New<String>(title).ToLocalChecked()); 
+}
+
 static void termAtExitDominoSession(void*) {	
 	
 
@@ -80,6 +134,19 @@ NAN_MODULE_INIT(InitAll) {
 
 	Set(target, New<String>("searchNsfAsync").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(SearchNsfAsync)).ToLocalChecked());
+
+		Set(target, New<String>("sinitThread").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(sinitThread)).ToLocalChecked());
+
+		Set(target, New<String>("stermThread").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(stermThread)).ToLocalChecked());
+		
+		Set(target, New<String>("openDatabase").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(openDatabase)).ToLocalChecked());
+
+		Set(target, New<String>("getDatabaseName").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(getDatabaseName)).ToLocalChecked());
+		
 	/*
 	Set(target, New<String>("getResponseDocumentsAsync").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(GetResponseDocumentsAsync)).ToLocalChecked());
