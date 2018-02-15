@@ -1,13 +1,12 @@
 {
   "name": "domino-nsf",
-  "version": "0.2.0",
+  "version": "0.2.5",
   "description": "Nodejs driver for Domino nsf databases",
   "homepage": "https://github.com/nthjelme/nodejs-domino",
   "scripts": {
     "commit": "git-cz",
     "test": "mocha index.test.js"
   },
-  "gypfile": true,
   "dependencies": {},
   "keywords": [
     "database",
