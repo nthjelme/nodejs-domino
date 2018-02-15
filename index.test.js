@@ -176,6 +176,15 @@ describe('domino-nsf',function() {
 			newNote.setItemValue("text_list",text_list);
 			expect(newNote.getItemValue("text_list")).to.deep.equal(text_list);
 		});
+
+		it('should append a value to the array', function() {
+			let text_list = ["Text1","Text2","Text3"];
+			let textToAppend = "Text4";
+			text_list.push(textToAppend);
+			newNote.appendItemValue("text_list",textToAppend);
+			expect(newNote.getItemValue("text_list")).to.deep.equal(text_list);
+
+		});
 		
 		it('should save the newnote and get the note unid', function() {
 			newNote.updateNote();

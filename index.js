@@ -75,6 +75,11 @@ function Domino() {
 			baseNote.setItemValue = function(itemName,value) {
 				return dominoDriver.setItemValue(this.handle,itemName,value);
 			}
+
+			baseNote.appendItemValue = function(itemName, itemToAppend) {
+				return dominoDriver.appendItemTextList(this.handle,itemName,itemToAppend);
+			}
+
 			baseNote.updateNote = function() {
 				dominoDriver.updateNote(this.handle);
 			}
