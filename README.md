@@ -21,6 +21,8 @@ If you want to run on Linux, you'll need to build it from source. Check out deve
 
 ## Usage
 
+### Async API
+
 ```js
 var Domino = require('domino-nsf');
 var domino = Domino();
@@ -73,6 +75,108 @@ domino.termSession();
   exact: true/false, exact or partial match when using findByKey
 }
 ```
+
+### Synchronous API
+```js
+var Domino = require('domino-nsf');
+var domino = Domino();
+
+// you must run sinitThread before calling any notes api.
+domino.sinitThread();
+let db = domino.openDatabase('test.nsf');
+let note = db.createNotesNote();
+note.setItemText('Form','Test');
+note.setItemText('Subject','Hello World!');
+
+// save the note
+note.updateNote();
+
+// close the note and db
+note.close();
+db.close();
+
+
+// terminate thread before exiting
+domino.stermThread();
+
+```
+
+### Avaliable methods
+#### Domino object
+
+    sinitThread()
+init the notes session/thread
+
+    stermThread()
+terminate the notes thread
+
+    createDatabase('server!!path/databasename.nsf')
+create a new **database**, on given serve and path. If path is omitted, localhost is used.   
+Returns a **database** object.
+
+    openDatabase('server!!path/databasename.nsf')
+Opens a database.  
+Returns a **database** object.
+ 
+    deleteDatabase('server!!path/databasename.nsf');
+
+#### Database object
+    getNotesNote('unid')
+Opens a Notes note by *UNID*.  
+Returns a **note** object. 
+
+    createNotesNote()
+Creates a new note in the database.  
+Returns a Notes object.
+
+    getDatabaseName()
+Return the database name / title.
+
+    close()
+Closes the database handle.
+
+#### Notes object
+    getItemText('itemName')
+returns the items value as a string, returns empty string if item does not exists.
+
+    getItemNumber('itemName')
+returns the items value as a number
+
+    getItemDate('itemName')
+
+return item date value as js date.
+
+    getItemValue('itemName')
+returns the item value as a text array.
+
+    hasItem('itemName')
+returns true/false if note has item.
+
+    getUNID()
+returns the note UNID
+
+    updateNote()
+saves the note to database.
+
+    setItemText('itemName','string')
+set a string value to an item. If the item exists, it will replace the item value.
+
+    setItemNumber('itemName,number)
+set a number value to an item. If the item exists, it will replace the item value.
+
+    setItemValue('itemName', ['text','array');
+set an text array to an item.
+
+    appendItemValue('itemName','string')
+append a string value to an existing text array.
+
+    deleteItem('itemName')
+delete an item from a note.  
+Returns true if item was deleted.
+
+    close()
+Close the note handle. After calling close, you cannot call any methods on the current **Note** object.
+
 ## Development and Contribution
 
 ### Local Development Windows
