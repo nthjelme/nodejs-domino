@@ -20,6 +20,102 @@ function Domino() {
 		});
 	};
 
+	var sinitThread = function() {
+		dominoDriver.sinitThread();
+	}
+
+	var stermThread = function() {
+		dominoDriver.stermThread();
+	}
+
+	var openDatabase = function(databaseName) {
+	
+		var db = {handle:0};
+		db.handle =  dominoDriver.openDatabase(databaseName);
+		if (db.handle==0) {
+			throw Error("Error opening database");
+		} else {
+			db.getDatabaseName = function() {
+				return dominoDriver.getDatabaseName(db.handle);
+			}
+
+			db.close = function() {
+				dominoDriver.closeDatabase(db.handle);
+				db.handle=0;
+			}
+
+			var baseNote = {};
+			baseNote.getItemText = function(itemName) {
+				return dominoDriver.getItemText(this.handle,itemName);
+			}
+			baseNote.setItemText = function(itemName,value) {
+				dominoDriver.setItemText(this.handle, itemName, value);
+			}
+			baseNote.getItemNumber = function(itemName) {
+				return dominoDriver.getItemNumber(this.handle,itemName);
+			}
+			baseNote.setItemNumber = function(itemName,value) {
+				return dominoDriver.setItemNumber(this.handle,itemName,value);
+			}
+			baseNote.getItemDate = function(itemName) {
+				return dominoDriver.getItemDate(this.handle,itemName);
+			}
+			baseNote.getItemValue = function(itemName) {
+				return dominoDriver.getItemValue(this.handle,itemName);
+			}
+			baseNote.hasItem = function(itemName) {
+				return dominoDriver.hasItem(this.handle,itemName);
+			}
+			baseNote.deleteItem = function(itemName) {
+				return dominoDriver.deleteItem(this.handle,itemName);
+			}
+			baseNote.setAuthor = function(itemName) {
+				return dominoDriver.setAuthor(this.handle,itemName);
+			}
+			baseNote.setItemValue = function(itemName,value) {
+				return dominoDriver.setItemValue(this.handle,itemName,value);
+			}
+			baseNote.updateNote = function() {
+				dominoDriver.updateNote(this.handle);
+			}
+			baseNote.close = function() {
+				dominoDriver.closeNote(this.handle);
+			}
+			baseNote.getUNID = function() {
+				return dominoDriver.getNoteUNID(this.handle);
+			}
+
+			db.createNotesNote = function() {
+				var note = baseNote;
+				note.handle = dominoDriver.createNotesNote(db.handle);
+				return note;
+			}
+			
+			db.getNotesNote = function(unid) {
+				var note = baseNote;
+				note.handle = dominoDriver.getNotesNote(db.handle,unid);
+				
+				return note;
+			}
+		}
+		return db;
+	}
+
+	
+	/*
+	
+	var db_h = domino.openDatabase();
+	console.log("db_h",db_h);
+	console.log("databaseName:",domino.getDatabaseName(db_h));
+	var unid="09CD46926428E10EC12581FD0041C90B";
+	var note = domino.getNotesNote(db_h,unid);
+	console.log("note handle: " , note);
+	console.log("note.subject: ",domino.getItemText(note,"Subject"));
+	//console.log("note.tall: ",domino.getItemNumber(note,"tall"));
+	console.log("note.body: ",domino.getItemHTML(db_h,note,"Body"));
+	domino.stermThread();
+	*/
+
 	var use = function(db) {
 		var localDb = db;
 
@@ -112,6 +208,9 @@ function Domino() {
 	dbObj.termSession = termSession;
 	dbObj.createDatabase = createDatabase;
 	dbObj.deleteDatabase = deleteDatabase;
+	dbObj.openDatabase = openDatabase;
+	dbObj.sinitThread = sinitThread;
+	dbObj.stermThread = stermThread;
 	
 	return dbObj;
 };

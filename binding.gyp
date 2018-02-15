@@ -13,7 +13,9 @@
 		"src/DataHelper.cc",
 		"src/create_database.cc",
 		"src/delete_database.cc",
-		"src/nsf_search.cc"
+		"src/nsf_search.cc",
+		"src/notes_document.cc",
+		"src/notes_database.cc",
 	],
       "conditions": [
 	["OS==\"linux\"",{

@@ -40,6 +40,9 @@
 #include "nsfdata.h"
 #include "osmisc.h"
 #include "osfile.h"
+#include "htmlapi.h"
+#include "notes_document.h"
+#include "notes_database.h"
 
 using v8::FunctionTemplate;
 using v8::Handle;
@@ -79,40 +82,6 @@ void stermThread(const Nan::FunctionCallbackInfo<v8::Value>& info) {
 	NotesTermThread();
 }
 
-void openDatabase(const Nan::FunctionCallbackInfo<v8::Value>& info) {
-	STATUS					error = NOERROR;     /* return status from API calls */
-	char *error_text = (char *) malloc(sizeof(char) * 200);   
-	DBHANDLE    db_handle;      /* handle of source database */
-	char *dbName ="test.nsf";
-	if (error = NSFDbOpen(dbName, &db_handle)) {
-			DataHelper::GetAPIError(error,error_text);
-			printf("error: %s", error_text);
-	}
-	USHORT dh = (USHORT) db_handle;
-  Local<Number> retval = Nan::New((double) dh);
-  info.GetReturnValue().Set(retval); 
-}
-
-void getDatabaseName(const Nan::FunctionCallbackInfo<v8::Value>& info) {
-	double value = info[0]->NumberValue();
-	STATUS					error = NOERROR;     /* return status from API calls */
-	char *error_text = (char *) malloc(sizeof(char) * 200);   
-	DBHANDLE    db_handle;      /* handle of source database */
-	
-	char       title[NSF_INFO_SIZE] = "";   /* database title */
-	unsigned short db_h = (unsigned short) value;
-	db_handle = (DHANDLE)db_h;
-	char       buffer[NSF_INFO_SIZE] = "";  /* database info buffer */
-	if (error = NSFDbInfoGet (db_handle, buffer))
-	{	
-		NSFDbClose (db_handle);	
-	}
-
-	NSFDbInfoParse (buffer, INFOPARSE_TITLE, title, NSF_INFO_SIZE - 1);
-	
-	info.GetReturnValue().Set(
-         Nan::New<String>(title).ToLocalChecked()); 
-}
 
 static void termAtExitDominoSession(void*) {	
 	
@@ -135,17 +104,82 @@ NAN_MODULE_INIT(InitAll) {
 	Set(target, New<String>("searchNsfAsync").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(SearchNsfAsync)).ToLocalChecked());
 
-		Set(target, New<String>("sinitThread").ToLocalChecked(),
+	Set(target, New<String>("sinitThread").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(sinitThread)).ToLocalChecked());
 
-		Set(target, New<String>("stermThread").ToLocalChecked(),
+	Set(target, New<String>("stermThread").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(stermThread)).ToLocalChecked());
 		
-		Set(target, New<String>("openDatabase").ToLocalChecked(),
+	/**
+	 * Database methods
+	 * 
+	 * */
+	Set(target, New<String>("openDatabase").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(openDatabase)).ToLocalChecked());
+		
+	Set(target, New<String>("closeDatabase").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(closeDatabase)).ToLocalChecked());
 
-		Set(target, New<String>("getDatabaseName").ToLocalChecked(),
+	Set(target, New<String>("getDatabaseName").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(getDatabaseName)).ToLocalChecked());
+		
+	Set(target, New<String>("replicationSummary").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(replicationSummary)).ToLocalChecked());
+				
+	Set(target, New<String>("getNotesNote").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(getNotesNote)).ToLocalChecked());
+
+	Set(target, New<String>("createNotesNote").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(createNotesNote)).ToLocalChecked());
+
+	
+	/**
+	 * Document methods
+	 * */
+	Set(target, New<String>("closeNote").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(closeNote)).ToLocalChecked());
+
+	Set(target, New<String>("updateNote").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(updateNote)).ToLocalChecked());
+
+	Set(target, New<String>("getNoteUNID").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(getNoteUNID)).ToLocalChecked());
+
+	Set(target, New<String>("getItemText").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(getItemText)).ToLocalChecked());
+
+	Set(target, New<String>("hasItem").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(hasItem)).ToLocalChecked());
+
+	Set(target, New<String>("setItemText").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(setItemText)).ToLocalChecked());
+	
+	Set(target, New<String>("setAuthor").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(setAuthor)).ToLocalChecked());
+		
+	Set(target, New<String>("setItemValue").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(setItemValue)).ToLocalChecked());
+		
+	Set(target, New<String>("getItemNumber").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(getItemNumber)).ToLocalChecked());
+
+	Set(target, New<String>("setItemNumber").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(setItemNumber)).ToLocalChecked());
+						
+	Set(target, New<String>("getItemDate").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(getItemDate)).ToLocalChecked());
+		
+	Set(target, New<String>("getItemValue").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(getItemValue)).ToLocalChecked());
+
+	Set(target, New<String>("appendItemTextList").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(appendItemTextList)).ToLocalChecked());
+
+	Set(target, New<String>("getMimeItem").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(getMimeItem)).ToLocalChecked());
+	
+	Set(target, New<String>("deleteItem").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(deleteItem)).ToLocalChecked());
 		
 	/*
 	Set(target, New<String>("getResponseDocumentsAsync").ToLocalChecked(),

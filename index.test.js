@@ -12,7 +12,7 @@ var doc = {
 	"array": ["a","b","c"]
 };
 var test_db = {
-	"database":"nodejs_domino.nsf",
+	"database":"nodejs_domino9.nsf",
 	"title":"Test database",
 	"server":""
 }
@@ -32,7 +32,9 @@ describe('domino-nsf',function() {
 
 	after(function() {
 		domino.deleteDatabase(test_db,function(error,status) {
-
+			if (error) {
+				console.log("error deleting database,",error);
+			}
 		});
 		domino.termSession();
 	});
@@ -116,6 +118,77 @@ describe('domino-nsf',function() {
 		});
 
 	});
+
+	 describe('open database and get name', function() {
+		let db = {};
+		let note = {};
+		let newNote = {};
+		before(function(done) {
+		domino.sinitThread();
+			db = domino.openDatabase(test_db.database);
+			note = db.getNotesNote(savedDocumentUnid);
+			done();
+		});
+
+		it('should have a name equals ' + test_db.title, function() {
+			expect(db.getDatabaseName()).to.be.equal(test_db.title);
+		});
+
+		it('should have a note.Name equals to ' + doc.Name, function() {
+			expect(note.getItemText("Name")).to.be.equal(doc.Name);
+		});
+
+		it('should have a note.Number equals to ' + doc.number, function() {
+			expect(note.getItemNumber("number")).to.be.equal(doc.number);
+		});
+
+		it('should have a note.Date equals to ' + doc.date, function() {
+			expect(new Date(note.getItemDate("date")).getTime()).to.be.equal(doc.date.getTime());
+		});
+
+		it('should create a new note and get a handle', function() {
+			newNote = db.createNotesNote();
+			expect(newNote.handle).to.not.equal(0);
+		});
+
+		it('should create a item on newly created note', function() {
+			newNote.setItemText("test", "test value");
+			expect(newNote.getItemText("test")).to.be.equal("test value");
+		});
+
+		it('hasItem should return true', function() {
+			expect(newNote.hasItem("test")).to.be.true;
+			
+		});
+
+		it('deleted item should be empty', function() {
+			newNote.deleteItem("test");
+			expect(newNote.getItemText("test")).to.be.equal("");		
+		});		
+
+		it('should create a number item on newly created note', function() {
+			newNote.setItemNumber("tall", 33.3);
+			expect(newNote.getItemNumber("tall")).to.be.equal(33.3);
+		});
+
+		it('should create an array item on newly created note', function() {
+			var text_list = ["Text1","Text2","Text3"];
+			newNote.setItemValue("text_list",text_list);
+			expect(newNote.getItemValue("text_list")).to.deep.equal(text_list);
+		});
+		
+		it('should save the newnote and get the note unid', function() {
+			newNote.updateNote();
+			expect(newNote.getUNID()).to.have.lengthOf(32);
+		});
+	
+		after(function(done) {
+			note.close();
+			db.close();
+			domino.stermThread();
+			done();
+		})
+	}); 
 	
 	describe('delete document', function() {
 		var deleteResult = {};
