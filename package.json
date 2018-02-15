@@ -7,7 +7,6 @@
     "commit": "git-cz",
     "test": "mocha index.test.js"
   },
-  "private": true,
   "gypfile": true,
   "dependencies": {},
   "keywords": [
