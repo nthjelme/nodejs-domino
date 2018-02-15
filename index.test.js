@@ -142,9 +142,21 @@ describe('domino-nsf',function() {
 			expect(note.getItemNumber("number")).to.be.equal(doc.number);
 		});
 
+		it ('should return a number value', function() {
+			expect(note.getItemValue("number")).to.be.equal(doc.number);
+		});
+
+		it ('should return a text value', function() {
+			expect(note.getItemValue("Name")).to.be.equal(doc.Name);
+		})
+
 		it('should have a note.Date equals to ' + doc.date, function() {
 			expect(new Date(note.getItemDate("date")).getTime()).to.be.equal(doc.date.getTime());
 		});
+
+		it('should return a date equals to ' + doc.date, function() {
+			expect(note.getItemValue("date").toString()).to.be.equal(doc.date.toString());
+		})
 
 		it('should create a new note and get a handle', function() {
 			newNote = db.createNotesNote();
@@ -185,6 +197,13 @@ describe('domino-nsf',function() {
 			expect(newNote.getItemValue("text_list")).to.deep.equal(text_list);
 
 		});
+
+		it('should create a date item', function() {
+			let date = new Date();
+			newNote.setItemDate("date_test",date);
+			// notes does not save ms in dates, compare the date strings instead.
+			expect(newNote.getItemDate("date_test").toString()).to.be.equal(date.toString());
+		})
 		
 		it('should save the newnote and get the note unid', function() {
 			newNote.updateNote();
