@@ -47,10 +47,13 @@ NAN_METHOD(setAuthor);
 NAN_METHOD(appendItemTextList);
 NAN_METHOD(getMimeItem);
 NAN_METHOD(deleteItem);
+NAN_METHOD(setItemDate);
 
 void nsfItemSetText(unsigned short nHandle, const char * itemName, const char * itemValue);
 void nsfGetItemText(unsigned short nHandle, const char * itemName,char *value);
 void nsfItemSetNumber(unsigned short nHandle, const char * itemName, const double * itemValue);
+void nsfSetItemDate(unsigned short usNHandle, const char * itemName, double unix_time);
+double nsfGetItemDate(unsigned short n_h, const char * itemName);
 double nsfItemGetNumber(unsigned short nHandle, const char * itemName);
 void nsfItemCreateTextList(unsigned short nHandle, const char * itemName, const char * itemValue);
 void nsfItemAppendTextList(unsigned short nHandle, const char * itemName, const char * itemValue);

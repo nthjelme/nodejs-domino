@@ -168,7 +168,10 @@ NAN_MODULE_INIT(InitAll) {
 						
 	Set(target, New<String>("getItemDate").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(getItemDate)).ToLocalChecked());
-		
+
+	Set(target, New<String>("setItemDate").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(setItemDate)).ToLocalChecked());	
+
 	Set(target, New<String>("getItemValue").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(getItemValue)).ToLocalChecked());
 

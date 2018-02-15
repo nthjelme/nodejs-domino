@@ -180,7 +180,9 @@ NAN_METHOD(getItemValue) {
 		info.GetReturnValue().Set(arr);
 		
 	} else if (item_type == TYPE_TIME) {
-
+		double dateTimeValue = nsfGetItemDate(n_h,itemName.c_str());
+		Local<v8::Date> retval = New<v8::Date>(dateTimeValue).ToLocalChecked();
+  	info.GetReturnValue().Set(retval);
 	}
 }
 
@@ -212,7 +214,7 @@ NAN_METHOD(deleteItem) {
 	
 	double note_handle = info[0]->NumberValue();
 	v8::String::Utf8Value val(info[1]->ToString());
-	std::string itemName (*val);printf("deleting item, with notehandle=%d..\n",note_handle);
+	std::string itemName (*val);
 	STATUS error = NOERROR;
 	char *error_text = (char *) malloc(sizeof(char) * 200);
 	v8::Local<v8::Boolean> deleted = Nan::True();
@@ -223,6 +225,49 @@ NAN_METHOD(deleteItem) {
 		free(error_text);
 	}
 	info.GetReturnValue().Set(deleted);
+}
+
+NAN_METHOD(setItemDate) {	
+	double dNote_handle = info[0]->NumberValue();
+	v8::String::Utf8Value val(info[1]->ToString());
+	double unix_time;
+	Local<Value> dateValue =info[2];
+	if (dateValue->IsDate()) {			
+			unix_time = v8::Date::Cast(*dateValue)->NumberValue();
+	}
+	unsigned short usNHandle = (unsigned short) dNote_handle;
+	
+	std::string itemName (*val);
+	nsfSetItemDate(usNHandle,itemName.c_str(),unix_time);
+}
+
+void nsfSetItemDate(unsigned short usNHandle, const char * itemName, double unix_time) {
+	NOTEHANDLE note_handle;
+	STATUS error = NOERROR;
+	char *error_text = (char *) malloc(sizeof(char) * 200);
+	TIME tid;
+  note_handle = (NOTEHANDLE)usNHandle;
+	std::time_t t = static_cast<time_t>(unix_time / 1000);
+	struct tm* ltime = localtime(&t);
+	tid.year = ltime->tm_year + 1900;
+	tid.month = ltime->tm_mon + 1;
+	tid.day = ltime->tm_mday;
+	tid.hour = ltime->tm_hour;
+	tid.minute = ltime->tm_min + 1;
+	tid.second = ltime->tm_sec + 1;
+	tid.zone = 0;
+	tid.dst = 0;
+	tid.hundredth = 0;
+
+	if (error = TimeLocalToGM(&tid)) {
+		DataHelper::GetAPIError(error, error_text);
+		printf("Error converting Time Local to GM, %s\n",error_text);
+	}
+
+	if (error = NSFItemSetTime(note_handle, itemName, &tid.GM)) {
+		DataHelper::GetAPIError(error, error_text);
+		printf("Error setting time on item, %s",error_text);
+	}
 }
 
 NAN_METHOD(getMimeItem) {
@@ -409,7 +454,8 @@ NAN_METHOD(setItemValue) {
 		nsfItemSetNumber(note_handle,itemName.c_str(), &itemValue);
 
 	} else if (value->IsDate()) {
-
+		double unix_time = v8::Date::Cast(*value)->NumberValue();
+		nsfSetItemDate(note_handle,itemName.c_str(),unix_time);
 	}
 
 }
@@ -470,10 +516,6 @@ NAN_METHOD(getItemDate) {
 	double value = info[0]->NumberValue();
 	v8::String::Utf8Value val(info[1]->ToString());
 	std::string itemStr (*val);
-	char         field_text[MAXWORD];
-	WORD         field_len;
-	BOOL         field_found;
-	NOTEHANDLE   note_handle;
 	NUMBER       number_field;
 	double dateTimeValue = 0.0;
 	STATUS					error = NOERROR;     /* return status from API calls */
@@ -481,18 +523,33 @@ NAN_METHOD(getItemDate) {
 	char buf[MAXWORD];
 
 	unsigned short n_h = (unsigned short) value;
+	dateTimeValue = nsfGetItemDate(n_h,itemStr.c_str());
+	Local<v8::Date> retval = New<v8::Date>(dateTimeValue).ToLocalChecked();
+  info.GetReturnValue().Set(retval); 
+}
+
+double nsfGetItemDate(unsigned short n_h, const char * itemName) {
+	
+	char         field_text[MAXWORD];
+	WORD         field_len;
+	BOOL         field_found;
+	NOTEHANDLE   note_handle;
+	double dateTimeValue = 0.0;
+	STATUS					error = NOERROR;     /* return status from API calls */
+	char *error_text = (char *) malloc(sizeof(char) * 200);
+
 	note_handle = (NOTEHANDLE)n_h;
 
 	field_found = NSFItemIsPresent ( 
                 note_handle,
-                itemStr.c_str(),
-                (WORD) strlen (itemStr.c_str()));
+                itemName,
+                (WORD) strlen (itemName));
 
 
     if (field_found) {
 			TIMEDATE time_date;
 			if (NSFItemGetTime(note_handle,
-				itemStr.c_str(),
+				itemName,
 				&time_date)) {
 				TIME tid;
 				struct tm * timeinfo;
@@ -517,6 +574,5 @@ NAN_METHOD(getItemDate) {
 				dateTimeValue = dtime * 1000; // convert to double time
 				}
 		}	
-		Local<v8::Date> retval = New<v8::Date>(dateTimeValue).ToLocalChecked();
-  	info.GetReturnValue().Set(retval); 
+		return dateTimeValue;
 }

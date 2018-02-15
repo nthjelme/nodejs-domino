@@ -60,6 +60,10 @@ function Domino() {
 			baseNote.getItemDate = function(itemName) {
 				return dominoDriver.getItemDate(this.handle,itemName);
 			}
+			baseNote.setItemDate = function(itemName, date) {
+				return dominoDriver.setItemDate(this.handle,itemName,date);
+			}
+
 			baseNote.getItemValue = function(itemName) {
 				return dominoDriver.getItemValue(this.handle,itemName);
 			}
