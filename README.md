@@ -6,9 +6,9 @@
     npm install domino-nsf
 
 ## Requirements
-The domino-nsf package is currently windows onl. The binaries has been build for Win32 and tested with Node 6.1.0, 32bit. 
+The domino-nsf package is currently windows only. The binaries has been build for Win32 and tested with Node 8.9.4, 32bit. 
 
-The Notes program folder needs to be added to the system PATH.
+**The Notes program folder needs to be added to the system PATH.**
 
 ## Linux
 
@@ -147,7 +147,7 @@ returns the items value as a number
 return item date value as js date.
 
     getItemValue('itemName')
-returns the item value as a text array.
+returns the item value as a text,number,text array or date depending on type.
 
     hasItem('itemName')
 returns true/false if note has item.
@@ -161,11 +161,14 @@ saves the note to database.
     setItemText('itemName','string')
 set a string value to an item. If the item exists, it will replace the item value.
 
+    setItemDate('itemName', date)
+set a Date object value to an item
+
     setItemNumber('itemName,number)
 set a number value to an item. If the item exists, it will replace the item value.
 
-    setItemValue('itemName', ['text','array');
-set an text array to an item.
+    setItemValue('itemName', value);
+set an value to an item, value can be text,number,text array or js Date object
 
     appendItemValue('itemName','string')
 append a string value to an existing text array.
