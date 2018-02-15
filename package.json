@@ -1,17 +1,15 @@
 {
   "name": "domino-nsf",
-  "version": "0.0.3",
+  "version": "0.2.0",
   "description": "Nodejs driver for Domino nsf databases",
   "homepage": "https://github.com/nthjelme/nodejs-domino",
   "scripts": {
-      "commit": "git-cz",
-      "test": "mocha index.test.js"
+    "commit": "git-cz",
+    "test": "mocha index.test.js"
   },
   "private": true,
   "gypfile": true,
-  "dependencies": {
-    "nan": "*"
-  },
+  "dependencies": {},
   "keywords": [
     "database",
     "domino",
@@ -40,13 +38,14 @@
     }
   ],
   "repository": {
-    "type" : "git",
-    "url" : "https://github.com/nthjelme/nodejs-domino.git"
+    "type": "git",
+    "url": "https://github.com/nthjelme/nodejs-domino.git"
   },
   "devDependencies": {
     "chai": "^3.5.0",
     "cz-conventional-changelog": "^1.2.0",
-    "mocha": "^3.1.2"
+    "mocha": "^3.1.2",
+    "nan": "^2.8.0"
   },
   "config": {
     "commitizen": {
