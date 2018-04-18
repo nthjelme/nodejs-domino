@@ -24,17 +24,17 @@ If you want to run on Linux, you'll need to build it from source. Check out deve
 ### Async API
 
 ```js
-var Domino = require('domino-nsf');
-var domino = Domino();
+const Domino = require('domino-nsf');
+const domino = Domino();
 
-var doc = {
+let doc = {
   "FullName":"John Smith",
   "tags":["test","test2"],
   "age":33,
   "Form":"Person"
 };
 
-var db = domino.use({server:'',database:'database.nsf'});
+const db = domino.use({server:'',database:'database.nsf'});
 
 db.get("documentUNID",function(error,document) {
 	console.log("document",document);
@@ -78,8 +78,8 @@ domino.termSession();
 
 ### Synchronous API
 ```js
-var Domino = require('domino-nsf');
-var domino = Domino();
+const Domino = require('domino-nsf');
+const domino = Domino();
 
 // you must run sinitThread before calling any notes api.
 domino.sinitThread();
