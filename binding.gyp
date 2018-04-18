@@ -32,7 +32,7 @@
 	}],
 	["OS==\"win\"", {
 	  "include_dirs": ["<!(node -e \"require('nan')\")","<!(echo %NOTES_INCLUDE%)"],
-	  "libraries": [ "<!(echo %NOTES_LIB%)/mswin32/notes.lib"],
+	  "libraries": [ "<!(echo %NOTES_LIB%)/notes.lib"],
 	  "defines": [ "W32" ],	  	
 	}]
 
