@@ -407,7 +407,20 @@ public:
 		
 		
 		if (category.length() > 0) {
-			error = NIFFindByName(hCollection, category.c_str(), FIND_CASE_INSENSITIVE, &CollPosition, &number_match);			
+			TranslatedKey = (char *)malloc(256);
+			if (TranslatedKey == NULL)
+			{
+				printf("Error: Out of memory.\n");
+			}
+			else
+				cleanup |= FREE_TRANSLATEDKEY;
+			TranslatedKeyLen = OSTranslate (OS_TRANSLATE_UTF8_TO_LMBCS,
+                                category.c_str(),
+                                (WORD) strlen (category.c_str()),
+                                TranslatedKey,
+                                256);
+
+			error = NIFFindByName(hCollection, TranslatedKey, FIND_CASE_INSENSITIVE, &CollPosition, &number_match);			
 			if (ERR(error) == ERR_NOT_FOUND) {
 				SetErrorMessage("Category not found in the collection");
 				NIFCloseCollection(hCollection);
