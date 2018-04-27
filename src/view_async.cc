@@ -129,7 +129,6 @@ value of item #3
 	time_t rawtime;
 	double dtime;
 	double dateTimeValue;
-
 	std::vector<DocumentItem*> column;
 	DocumentItem  *di_indent = new DocumentItem();
 	di_indent->type = 2;
@@ -141,6 +140,7 @@ value of item #3
 	di_unid->name = "@unid";
 	di_unid->stringValue = unid;
 	column.push_back(di_unid);
+
 
 										/* pSummaryPos points to the beginning of the summary buffer. Copy
 										the ITEM_TABLE header at the beginning of the summary buffer
@@ -170,13 +170,22 @@ value of item #3
 	item, copying the item name into the ItemName variable and
 	converting the item value to printable text in ItemText.
 	*/
-
 	for (i = 0; i < ItemCount; i++)	{			
+
 		NameLength = Items[i].NameLength;
 		memcpy(ItemName, pSummaryPos, NameLength);
 		ItemName[NameLength] = '\0';
 		pSummaryPos += NameLength;
 		
+		if (Items[i].ValueLength == 0) {				
+						DocumentItem  *di = new DocumentItem();
+						di->name ="  *  ";
+						di->stringValue = '\0';
+						di->type = 1;
+						column.push_back(di);
+    } else {
+
+				
 		/* pSummaryPos now points to the item value. First get the
 		data type. Then step over the data type word to the data
 		value and convert the value to printable text. Store the
@@ -187,6 +196,7 @@ value of item #3
 
 		ValueLength = Items[i].ValueLength - sizeof(WORD);
 		/* If the item data type is text, copy into ItemText[]. */
+		
 		DocumentItem  *di = new DocumentItem();
 		di->name = (char*)malloc(NameLength + 1);
 		if (di->name) {
@@ -217,8 +227,6 @@ value of item #3
 			/* Extract a text list item from the pSummary. */
 
 			case TYPE_TEXT_LIST:
-
-
 				memcpy(&ListCount, pSummaryPos, sizeof(ListCount));
 				ListLen = 0;
 				for (WORD n = 0; n < ListCount; n++)
@@ -284,14 +292,13 @@ value of item #3
 			default:			
 				break;
 			}
+		
 		/* Advance to next item in the pSummary. */
 		pSummaryPos += ValueLength;
 		//pSummaryPos += (ItemLength[i] - DATATYPE_SIZE);
 		/* End of loop that is extracting each item in the pSummary. */
 		//viewResult.push_back(doc2);
-		
-		
-
+		} // end else
 	}
 	view.push_back(column);
 	/* End of function */
@@ -316,7 +323,6 @@ public:
 	// here, so everything we need for input and output
 	// should go on `this`.
 	void Execute() {
-
 		WORD					cleanup = DO_NOTHING;		
 		DBHANDLE				hDB;                    /* handle of the database */
 		NOTEID					ViewID;              /* note id of the view */
@@ -366,14 +372,13 @@ public:
 			viewName.c_str(),
 			&ViewID))
 		{		
-			printf("niffindview\n");
 			DataHelper::GetAPIError(error,error_text);
 			SetErrorMessage(error_text);
 			NSFDbClose(hDB);
 			NotesTermThread();
 			return;
 		}
-
+		
 		if (error = NIFOpenCollection(
 			hDB,            /* handle of db with view */
 			hDB,            /* handle of db with data */
@@ -507,6 +512,7 @@ public:
 
 		do
 		{
+
 			if (error = NIFReadEntries(
 				hCollection,        /* handle to this collection */
 				&CollPosition,      /* where to start in collection */
@@ -614,6 +620,7 @@ public:
 //				if (entry_indent != MAIN_TOPIC_INDENT) continue;
 
 				/* Call a local function to print the summary buffer. */
+			
 				if (error = PrintSummary(pSummary,entry_indent,unid_buffer))
 				{
 					printf("error printsummary\n");
@@ -757,7 +764,7 @@ NAN_METHOD(GetViewAsync) {
 
 	Local<Value> viewVal = viewParam->Get(viewKey);
 	
-	
+
 	std::string catStr;
 	std::string findByKeyStr;
 	bool exactMatch = false;
