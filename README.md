@@ -24,8 +24,7 @@ If you want to run on Linux, you'll need to build it from source. Check out deve
 ### Async API
 
 ```js
-const Domino = require('domino-nsf');
-const domino = Domino();
+const domino = require('domino-nsf')();
 
 let doc = {
   "FullName":"John Smith",
@@ -34,7 +33,7 @@ let doc = {
   "Form":"Person"
 };
 
-const db = domino.use({server:'',database:'database.nsf'});
+const db = domino.use('database.nsf');
 
 db.get("documentUNID",function(error,document) {
 	console.log("document",document);
@@ -78,13 +77,12 @@ domino.termSession();
 
 ### Synchronous API
 ```js
-const Domino = require('domino-nsf');
-const domino = Domino();
+const domino = require('domino-nsf')();
 
 // you must run sinitThread before calling any notes api.
 domino.sinitThread();
 let db = domino.openDatabase('test.nsf');
-let note = db.createNotesNote();
+let note = db.openNotesNote();
 note.setItemText('Form','Test');
 note.setItemText('Subject','Hello World!');
 
@@ -121,7 +119,7 @@ Returns a **database** object.
     deleteDatabase('server!!path/databasename.nsf');
 
 #### Database object
-    getNotesNote('unid')
+    openNotesNote('unid')
 Opens a Notes note by *UNID*.  
 Returns a **note** object. 
 
