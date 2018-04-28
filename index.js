@@ -73,8 +73,8 @@ function Domino() {
 			baseNote.deleteItem = function(itemName) {
 				return dominoDriver.deleteItem(this.handle,itemName);
 			}
-			baseNote.setAuthor = function(itemName) {
-				return dominoDriver.setAuthor(this.handle,itemName);
+			baseNote.setAuthor = function(itemName,value) {
+				return dominoDriver.setAuthor(this.handle,itemName,value);
 			}
 			baseNote.setItemValue = function(itemName,value) {
 				return dominoDriver.setItemValue(this.handle,itemName,value);
@@ -100,7 +100,7 @@ function Domino() {
 				return note;
 			}
 			
-			db.getNotesNote = function(unid) {
+			db.openNotesNote = function(unid) {
 				var note = baseNote;
 				note.handle = dominoDriver.getNotesNote(db.handle,unid);
 				
@@ -126,7 +126,7 @@ function Domino() {
 	*/
 
 	var use = function(db) {
-		var localDb = db;
+		var localDb = {database: db};
 
 		var replicate = function(callback) {
 			callback({error:"Not implemented"},undefined);
