@@ -13,8 +13,7 @@ var doc = {
 };
 var test_db = {
 	"database":"nodejs_domino9.nsf",
-	"title":"Test database",
-	"server":""
+	"title":"Test database"
 }
 
 
@@ -25,7 +24,7 @@ describe('domino-nsf',function() {
 			if (error) {
 				console.error(error);
 			}
-			db = domino.use(database);
+			db = domino.use(database.database);
 		});
 		
 	});
@@ -126,7 +125,7 @@ describe('domino-nsf',function() {
 		before(function(done) {
 		domino.sinitThread();
 			db = domino.openDatabase(test_db.database);
-			note = db.getNotesNote(savedDocumentUnid);
+			note = db.openNotesNote(savedDocumentUnid);
 			done();
 		});
 
