@@ -310,7 +310,7 @@ STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr
 			timeinfo->tm_min = tid.minute-1;
 			timeinfo->tm_sec = tid.second-1;
 			
-			double dtime = static_cast<double>(mktime(timeinfo));
+			double dtime = static_cast<double>(mktime(timeinfo))+1;
 			
 			double dateTimeValue = dtime * 1000; // convert to double time
 			di->numberValue = dateTimeValue;

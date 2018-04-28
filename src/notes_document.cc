@@ -254,7 +254,7 @@ void nsfSetItemDate(unsigned short usNHandle, const char * itemName, double unix
 	tid.day = ltime->tm_mday;
 	tid.hour = ltime->tm_hour;
 	tid.minute = ltime->tm_min + 1;
-	tid.second = ltime->tm_sec + 1;
+	tid.second = ltime->tm_sec-1;// + 1;
 	tid.zone = 0;
 	tid.dst = 0;
 	tid.hundredth = 0;
@@ -301,17 +301,7 @@ NAN_METHOD(getMimeItem) {
 		//return ERR(error); 
 	}
 
-	MIMEHANDLE hMIMEStream;
-
-	if (error = MIMEStreamOpen(note_handle,
-  	"body",
-  	(WORD)strlen("body"),
-  	MIME_STREAM_OPEN_READ|MIME_STREAM_INCLUDE_HEADERS,
-  	&hMIMEStream)) {
-			DataHelper::GetAPIError(error, error_text);
-		printf("Error open stream: %s\n",error_text);
-	}
-
+	
 	if (fieldType == TYPE_MIME_PART) {
 	/*	pMime = (MIME_PART *)OSLockBlock(MIME_PART, fieldBlock); 
 		char *pText; 
@@ -567,9 +557,9 @@ double nsfGetItemDate(unsigned short n_h, const char * itemName) {
 
 				timeinfo->tm_hour = tid.hour;
 				timeinfo->tm_min = tid.minute-1;
-				timeinfo->tm_sec = tid.second-1;
+				timeinfo->tm_sec = tid.second;
 			
-				double dtime = static_cast<double>(mktime(timeinfo));
+				double dtime = static_cast<double>(mktime(timeinfo))+1;
 			
 				dateTimeValue = dtime * 1000; // convert to double time
 				}

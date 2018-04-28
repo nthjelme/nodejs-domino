@@ -186,7 +186,7 @@ public:
 				tid.day = ltime->tm_mday;
 				tid.hour = ltime->tm_hour;
 				tid.minute = ltime->tm_min + 1;
-				tid.second = ltime->tm_sec + 1;
+				tid.second = ltime->tm_sec-1;
 				tid.zone = 0;
 				tid.dst = 0;
 				tid.hundredth = 0;
