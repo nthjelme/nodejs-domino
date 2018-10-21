@@ -12,12 +12,16 @@
 #include <mime.h>
 #include <nif.h>
 #include <nsfnote.h>
+#include <nsfmime.h>
 #include <osmisc.h>
 #include <osmem.h>
 #include <ctime>
 #include <stdio.h>
 
 #define BUFSIZE 185536
+
+char * fileContent; // global to keep mime fileContent.
+std::vector<std::string> strVec;
 
 NAN_METHOD(closeNote) {
   //v8::Isolate* isolate = info.GetIsolate();
@@ -26,6 +30,30 @@ NAN_METHOD(closeNote) {
 	unsigned short n_h = (unsigned short) value;
 	note_handle = (NOTEHANDLE)n_h;
 	NSFNoteClose(note_handle);	
+}
+
+NAN_METHOD(getNoteById) {
+	double value = info[0]->NumberValue();
+	double note_val(info[1]->NumberValue());
+ 	NOTEHANDLE   note_handle;
+	STATUS					error = NOERROR;     /* return status from API calls */
+	char *error_text = (char *) malloc(sizeof(char) * 200);   
+	DBHANDLE    db_handle;      /* handle of source database */
+	DWORD noteid = (DWORD) note_val;
+	
+	unsigned short db_h = (unsigned short) value;
+	db_handle = (DHANDLE)db_h;
+	if (error = NSFNoteOpenExt(db_handle, noteid,
+                                  OPEN_RAW_MIME_PART, &note_handle)) {
+		printf("error opening notebyid \n");
+			DataHelper::GetAPIError(error,error_text);
+			//SetErrorMessage(error_text);
+			printf("get note by id, error %s\n",error_text);
+
+	}
+	USHORT nh = (USHORT) note_handle;
+  Local<Number> retval = Nan::New((double) nh);
+  info.GetReturnValue().Set(retval); 
 }
 
 NAN_METHOD(getNotesNote) {
@@ -37,7 +65,7 @@ NAN_METHOD(getNotesNote) {
 	char *error_text = (char *) malloc(sizeof(char) * 200);   
 	DBHANDLE    db_handle;      /* handle of source database */
 	UNID temp_unid;
-	
+	NOTEID tempID;
 	char       title[NSF_INFO_SIZE] = "";   /* database title */
 	unsigned short db_h = (unsigned short) value;
 	db_handle = (DHANDLE)db_h;
@@ -57,7 +85,20 @@ NAN_METHOD(getNotesNote) {
 			free(error_text);
 			return;
 		}
+		
+		// repoen note by by note id
+		NSFNoteGetInfo(note_handle, _NOTE_ID, &tempID);
+		NSFNoteClose(note_handle);
+		if (error = NSFNoteOpenExt(db_handle, tempID,
+                                  OPEN_RAW_MIME_PART, &note_handle)) {
+			printf("error opening notebyid \n");
+			DataHelper::GetAPIError(error,error_text);
+			//SetErrorMessage(error_text);
+			printf("get note by id, error %s\n",error_text);
+
+		}
 		USHORT nh = (USHORT) note_handle;
+
   	Local<Number> retval = Nan::New((double) nh);
   	info.GetReturnValue().Set(retval); 
 
@@ -108,6 +149,23 @@ NAN_METHOD(getNoteUNID) {
 	info.GetReturnValue().Set(  Nan::New<String>(unid_buffer).ToLocalChecked()); 
 }
 
+NAN_METHOD(getNoteID) {
+	double value = info[0]->NumberValue();
+	NOTEHANDLE   note_handle;
+	
+	DWORD tempID;
+	STATUS					error = NOERROR;     /* return status from API calls */
+	
+	unsigned short n_h = (unsigned short) value;
+	note_handle = (NOTEHANDLE)n_h;
+	
+	NSFNoteGetInfo(note_handle, _NOTE_ID, &tempID);
+	Local<Number> retval = Nan::New((double) tempID);
+  info.GetReturnValue().Set(retval); 
+
+}
+
+
 NAN_METHOD(setItemText) {
 	double note_handle = info[0]->NumberValue();
 	v8::String::Utf8Value itemName(info[1]->ToString());
@@ -129,8 +187,134 @@ void nsfItemSetText(unsigned short nHandle, const char * itemName, const char * 
 	if (error = NSFItemSetText(note_handle, itemName,buf,MAXWORD)) {
 		DataHelper::GetAPIError(error, error_text);
 		printf("Error writing text item%s\n",error_text);
+		free(error_text);
 	}
 }
+
+std::string nsfItemGetMime(unsigned short nHandle, const char *itemName) {
+	STATUS					error = NOERROR;     /* return status from API calls */
+	char *error_text = (char *) malloc(sizeof(char) * 200);   
+	char buf[MAXWORD];
+	BLOCKID                bidLinksItem;
+	DWORD                  dwLinksValueLen;
+	BLOCKID                bidLinksValue;
+	WORD                   item_type;
+	BOOL bMimeDataInFile;
+	char pchFileName[512];
+	NOTEHANDLE   note_handle;
+	note_handle = (NOTEHANDLE)nHandle;
+	
+	if (error = NSFItemInfo(note_handle, itemName,
+		strlen(itemName), &bidLinksItem,
+		&item_type, &bidLinksValue,
+		&dwLinksValueLen)) {		
+		DataHelper::GetAPIError(error, error_text);
+		printf("Error getting item info: %s\n",error_text);
+		return NULL;
+	}
+
+	bMimeDataInFile = NSFIsMimePartInFile(note_handle, bidLinksItem, pchFileName,(WORD)512);
+		
+		if (bMimeDataInFile) {
+			BLOCKID bkItem;
+			WORD field_type;
+			BLOCKID field_block;
+			DWORD field_length;
+			
+			NSFItemInfo (
+            note_handle,        /* note handle */
+            "$FILE",        /* field we want */
+            (WORD)strlen("$FILE"),    /* length of above */
+            &bkItem,            /* full field (return) */
+            &field_type,        /* field type (return) */
+            &field_block,        /* field contents (return) */
+            &field_length);        /* field length (return) */
+			error = NSFNoteExtractWithCallback(note_handle, bkItem, NULL, 0,ExtractwithCallback, (void*)0);
+			std::string ret;
+    	for(const auto &s : strVec) {        
+        ret += s;
+    	}
+
+			return ret;
+			
+		} else {
+			char *pMime; 
+			WORD wPartType;
+			DWORD dwFlags;
+			WORD wReserved;
+			WORD wPartOffset;
+			WORD wPartLen;
+			WORD wBoundaryOffset;
+			WORD wBoundaryLen;
+			WORD wHeadersOffset;
+			WORD wHeadersLen;
+			WORD wBodyOffset;
+			WORD wBodyLen;
+	
+			DHANDLE hPart;
+			if (error = NSFMimePartGetPart(bidLinksItem, &hPart)) {
+				printf("error getting mime part\n");
+			}
+			
+			if (error = NSFMimePartGetInfoByBLOCKID(bidLinksItem,
+   				&wPartType,
+   				&dwFlags,
+   				&wReserved,
+   				&wPartOffset,
+   				&wPartLen,
+   				&wBoundaryOffset,
+	   			&wBoundaryLen,
+   				&wHeadersOffset,
+   				&wHeadersLen,
+   				&wBodyOffset,
+   				&wBodyLen)) {
+			  printf("errr getting mimepartinfobyblockid\n");
+		 		return NULL;
+			}
+		
+			pMime = OSLock(char, hPart);
+			char *pText;
+			pText = (char *)pMime + wBoundaryLen+wHeadersLen;			
+			char *fieldText = (char *)malloc(wBodyLen);		
+			memcpy(fieldText, pText, wBodyLen); 
+			fieldText[wBodyLen] = '\0';
+			OSUnlock(hPart); 
+			free(hPart);
+			std::string bodyValue = std::string(fieldText);
+			free(fieldText);
+			return bodyValue;
+		}
+}
+
+void nsfItemSetMime(unsigned short nHandle, const char * itemName, const char * itemValue, const char *headers) {
+	STATUS error;
+	              
+	WORD PARTLEN = ((strlen(headers)-1)+(strlen(itemValue)-1));
+  char *achPart = (char *)malloc(PARTLEN+1);
+	NOTEHANDLE   note_handle;
+	note_handle = (NOTEHANDLE)nHandle;
+  char *item_name = (char *)malloc(strlen(itemName));
+	strcpy(item_name,itemName);
+  strcpy(achPart, headers);
+  strcat(achPart, itemValue);	
+  error = NSFMimePartAppend(note_handle,
+				    item_name,
+				    strlen(item_name),
+				    MIME_PART_BODY,
+				    MIME_PART_HAS_HEADERS,
+				    achPart,
+				    PARTLEN);
+  if (error) {
+		char *error_text = (char *) malloc(sizeof(char) * 200);   
+		DataHelper::GetAPIError(error, error_text);
+  	printf("Error writeing mime item. %s\n",error_text);
+		free(error_text);
+  }
+	free(item_name);
+	free(achPart);
+
+}
+
 
 NAN_METHOD(getItemValue) {
 	double value = info[0]->NumberValue();
@@ -144,16 +328,21 @@ NAN_METHOD(getItemValue) {
 	DWORD                  dwLinksValueLen;
 	BLOCKID                bidLinksValue;
 	WORD                   item_type;
-
+	BOOL bMimeDataInFile;
+	char pchFileName[512];
 	unsigned short n_h = (unsigned short) value;
 	note_handle = (NOTEHANDLE)n_h;
 
 	if (error = NSFItemInfo(note_handle, itemName.c_str(),
 		strlen(itemName.c_str()), &bidLinksItem,
 		&item_type, &bidLinksValue,
-		&dwLinksValueLen)) {
+		&dwLinksValueLen)) {		
+		DataHelper::GetAPIError(error, error_text);
+		printf("Error getting item info: %s\n",error_text);
 		return;
 	}
+
+	
 	
 	if (item_type == TYPE_TEXT) {
 		char buf[MAXWORD];
@@ -183,7 +372,98 @@ NAN_METHOD(getItemValue) {
 		double dateTimeValue = nsfGetItemDate(n_h,itemName.c_str());
 		Local<v8::Date> retval = New<v8::Date>(dateTimeValue).ToLocalChecked();
   	info.GetReturnValue().Set(retval);
+	} else if (item_type== TYPE_MIME_PART) {
+		std::string mime = nsfItemGetMime(n_h, itemName.c_str());
+		/*bMimeDataInFile = NSFIsMimePartInFile(note_handle, bidLinksItem, pchFileName,(WORD)512);
+		
+		if (bMimeDataInFile) {
+			BLOCKID bkItem;
+			WORD field_type;
+			BLOCKID field_block;
+			DWORD field_length;
+			
+			
+			NSFItemInfo (
+            note_handle,      
+            "$FILE",     
+            (WORD)strlen("$FILE"),
+            &bkItem,
+            &field_type,
+            &field_block,
+            &field_length);
+			error = NSFNoteExtractWithCallback(note_handle, bkItem, NULL, 0,ExtractwithCallback, (void*)0);
+			std::string ret;
+    	for(const auto &s : strVec) {        
+        ret += s;
+    	}
+		
+			info.GetReturnValue().Set(
+  		Nan::New<String>(ret).ToLocalChecked()); 
+			
+		} else {
+			char *pMime; 
+			WORD wPartType;
+			DWORD dwFlags;
+			WORD wReserved;
+			WORD wPartOffset;
+			WORD wPartLen;
+			WORD wBoundaryOffset;
+			WORD wBoundaryLen;
+			WORD wHeadersOffset;
+			WORD wHeadersLen;
+			WORD wBodyOffset;
+			WORD wBodyLen;
+	
+			DHANDLE hPart;
+			if (error = NSFMimePartGetPart(bidLinksItem, &hPart)) {
+				printf("error getting mime part\n");
+			}
+			
+			if (error = NSFMimePartGetInfoByBLOCKID(bidLinksItem,
+   				&wPartType,
+   				&dwFlags,
+   				&wReserved,
+   				&wPartOffset,
+   				&wPartLen,
+   				&wBoundaryOffset,
+	   			&wBoundaryLen,
+   				&wHeadersOffset,
+   				&wHeadersLen,
+   				&wBodyOffset,
+   				&wBodyLen)) {
+			  printf("errr getting mimepartinfobyblockid\n");
+		 		return;
+			}
+		
+			pMime = OSLock(char, hPart);
+			char *pText;
+			pText = (char *)pMime + wBoundaryLen+wHeadersLen;			
+			char *fieldText = (char *)malloc(wBodyLen);		
+			memcpy(fieldText, pText, wBodyLen); 
+			fieldText[wBodyLen] = '\0';
+			OSUnlock(hPart); 
+			free(hPart);
+			*/
+			info.GetReturnValue().Set(
+  		Nan::New<String>(mime).ToLocalChecked()); 
+			//free(fieldText);
+		
+		
 	}
+}
+
+STATUS LNCALLBACK ExtractwithCallback(const BYTE* byte, DWORD length, void far* pParam)
+{	
+	char *localstr = (char*)byte;
+
+	if (localstr != NULL) {
+		char *mimeContentPart = (char*)malloc(length + 1);
+		strncpy(mimeContentPart, localstr, length);
+		mimeContentPart[length] = '\0';
+		strVec.push_back(mimeContentPart);
+	}
+	
+	return NOERROR;
 }
 
 NAN_METHOD(getItemText) {
@@ -254,7 +534,7 @@ void nsfSetItemDate(unsigned short usNHandle, const char * itemName, double unix
 	tid.day = ltime->tm_mday;
 	tid.hour = ltime->tm_hour;
 	tid.minute = ltime->tm_min + 1;
-	tid.second = ltime->tm_sec-1;// + 1;
+	tid.second = ltime->tm_sec-1;
 	tid.zone = 0;
 	tid.dst = 0;
 	tid.hundredth = 0;
@@ -269,58 +549,39 @@ void nsfSetItemDate(unsigned short usNHandle, const char * itemName, double unix
 		printf("Error setting time on item, %s",error_text);
 	}
 }
+NAN_METHOD(setMimeItem) {	
+	double note_handle = info[0]->NumberValue();
+	v8::String::Utf8Value itemName(info[1]->ToString());
+	v8::String::Utf8Value val(info[2]->ToString());
+	v8::String::Utf8Value header(info[3]->ToString());
+	
+	std::string itemStr (*itemName);
+	std::string itemValue (*val);	
+	std::string headerValue (*header);
+	headerValue.append("\015\012\015\012");
+	itemValue.append("\015\012");
+	
+	nsfItemSetMime((unsigned short) note_handle,itemStr.c_str(),itemValue.c_str(),headerValue.c_str());
+}
 
-NAN_METHOD(getMimeItem) {
+NAN_METHOD(getMimeItem) {	
 	NOTEHANDLE   note_handle;	
-	BLOCKID fieldBlock;
-	DWORD fieldLen;
-	WORD fieldType;	
-	MIME_PART *pMime; 
-	DHANDLE        text_buffer;
-  char         *text_ptr;
-	DWORD        text_length;
-	char         field_text[BUFSIZE+1];
-	char achBuf[256];
-	DWORD dwBufLen;
 	STATUS					error = NOERROR;     /* return status from API calls */
 	char *error_text = (char *) malloc(sizeof(char) * 200);
 	double n_h = info[0]->NumberValue();
 	v8::String::Utf8Value val(info[1]->ToString());
 	std::string itemName (*val);
 	unsigned short nHandle = (unsigned short) n_h;
-	note_handle = (NOTEHANDLE)nHandle;
-	printf("get item: %s\n",itemName.c_str());
-
-	if (error = MIMEConvertMIMEPartsCC(note_handle, FALSE, NULL)) {
-			DataHelper::GetAPIError(error, error_text);
-			printf("Error set convertmime : %s\n",error_text);
-		}
-
-	if (error = NSFItemInfo(note_handle, itemName.c_str(), (WORD)strlen(itemName.c_str()), NULL, &fieldType, &fieldBlock, &fieldLen)) {
-		printf("error getting item info..");
-		//return ERR(error); 
-	}
-
-	
-	if (fieldType == TYPE_MIME_PART) {
-	/*	pMime = (MIME_PART *)OSLockBlock(MIME_PART, fieldBlock); 
-		char *pText; 
-		pText = (char *)pMime + sizeof(MIME_PART); 
-		DWORD textLen; 
-		char fieldText[9999]; 
-		textLen = pMime->wByteCount; 
-		memcpy(fieldText, pText, textLen); 
-		fieldText[textLen] = '\0'; 
-		OSUnlockBlock(fieldBlock);*/
-		info.GetReturnValue().Set(Nan::New<String>("mime part").ToLocalChecked()); 
-	} else if (fieldType== TYPE_COMPOSITE) {
+	//note_handle = (NOTEHANDLE)nHandle;
+	if (hasItem(nHandle,itemName.c_str())) {
+		std::string mime = nsfItemGetMime(nHandle, itemName.c_str());
 		info.GetReturnValue().Set(
-  	Nan::New<String>("TYPE_COMPOSITE").ToLocalChecked()); 
+	  	Nan::New<String>(mime).ToLocalChecked()); 
 	} else {
+		printf("can't find mime item by name: %s\n ", itemName.c_str());
 		info.GetReturnValue().Set(
-  	Nan::New<String>("not a mime or composite field").ToLocalChecked()); 
+	  	Nan::New<String>("").ToLocalChecked()); 
 	}
-
 
 }
 

@@ -129,6 +129,13 @@ NAN_MODULE_INIT(InitAll) {
 	Set(target, New<String>("getNotesNote").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(getNotesNote)).ToLocalChecked());
 
+	Set(target, New<String>("getNoteById").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(getNoteById)).ToLocalChecked());
+
+	Set(target, New<String>("getNoteID").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(getNoteID)).ToLocalChecked());
+
+
 	Set(target, New<String>("createNotesNote").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(createNotesNote)).ToLocalChecked());
 
@@ -180,6 +187,9 @@ NAN_MODULE_INIT(InitAll) {
 
 	Set(target, New<String>("getMimeItem").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(getMimeItem)).ToLocalChecked());
+
+	Set(target, New<String>("setMimeItem").ToLocalChecked(),
+		GetFunction(New<FunctionTemplate>(setMimeItem)).ToLocalChecked());
 	
 	Set(target, New<String>("deleteItem").ToLocalChecked(),
 		GetFunction(New<FunctionTemplate>(deleteItem)).ToLocalChecked());

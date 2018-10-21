@@ -19,7 +19,7 @@ var test_db = {
 
 describe('domino-nsf',function() {
 
-	before(function() {
+	before(function() {		
 		domino.createDatabase(test_db,function(error, database) {
 			if (error) {
 				console.error(error);
@@ -122,11 +122,19 @@ describe('domino-nsf',function() {
 		let db = {};
 		let note = {};
 		let newNote = {};
+		const body = "This is a body";
 		before(function(done) {
 		domino.sinitThread();
 			db = domino.openDatabase(test_db.database);
-			note = db.openNotesNote(savedDocumentUnid);
+			note = db.openNotesNote(savedDocumentUnid);			
+			const header = "Content-Type: application/text";
+			note.setItemMime("Body",header,body);
+			note.updateNote();
 			done();
+		});
+
+		it('should have a mime item body', function() {		
+			expect(note.getItemMime("Body").value).to.be.equal(body);
 		});
 
 		it('should have a name equals ' + test_db.title, function() {
@@ -167,6 +175,7 @@ describe('domino-nsf',function() {
 			expect(newNote.getItemText("test")).to.be.equal("test value");
 		});
 
+	
 		it('hasItem should return true', function() {
 			expect(newNote.hasItem("test")).to.be.true;
 			
@@ -208,6 +217,9 @@ describe('domino-nsf',function() {
 			newNote.updateNote();
 			expect(newNote.getUNID()).to.have.lengthOf(32);
 		});
+
+		
+
 	
 		after(function(done) {
 			note.close();

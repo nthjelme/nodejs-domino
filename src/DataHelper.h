@@ -52,6 +52,7 @@ class DataHelper {
 public:
 	static void GetAPIError(STATUS api_error, char * error_text);
 	static void ToUNID(const char *unidStr, UNID * unid); 
+	static void ToNOTEID(const char *idStr,NOTEID * noteId);
 };
 
 #endif  // ITEM_VALUE_H_

@@ -16,6 +16,15 @@ void DataHelper::GetAPIError(STATUS api_error, char * error_text)
 	return;
 }
 
+void DataHelper::ToNOTEID(const char *idStr,NOTEID * noteId) {
+	if (strlen(idStr) == 8) {
+		char id_buffer[9];
+		strncpy(id_buffer,idStr,8);
+		id_buffer[8] = '\0';
+		*noteId = (DWORD)strtoul(id_buffer+8,NULL,16);
+	}
+}
+
 void DataHelper::ToUNID(const char *unidStr, UNID * Unid) {
 	if (strlen(unidStr) == 32) {		
 		char unid_buffer[33];

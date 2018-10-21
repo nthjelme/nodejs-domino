@@ -80,6 +80,17 @@ function Domino() {
 				return dominoDriver.setItemValue(this.handle,itemName,value);
 			}
 
+			baseNote.setItemMime = function(itemName, header,body) {
+				return dominoDriver.setMimeItem(this.handle,itemName,body,header);
+			}
+
+			baseNote.getItemMime = function(itemName) {
+				let mimeItem = {
+					value: dominoDriver.getMimeItem(this.handle,itemName)
+				}
+				return mimeItem;
+			}
+
 			baseNote.appendItemValue = function(itemName, itemToAppend) {
 				return dominoDriver.appendItemTextList(this.handle,itemName,itemToAppend);
 			}
@@ -95,13 +106,13 @@ function Domino() {
 			}
 
 			db.createNotesNote = function() {
-				var note = baseNote;
+				var note = Object.create(baseNote);
 				note.handle = dominoDriver.createNotesNote(db.handle);
 				return note;
 			}
 			
 			db.openNotesNote = function(unid) {
-				var note = baseNote;
+				var note = Object.create(baseNote);
 				note.handle = dominoDriver.getNotesNote(db.handle,unid);
 				
 				return note;
@@ -109,22 +120,7 @@ function Domino() {
 		}
 		return db;
 	}
-
 	
-	/*
-	
-	var db_h = domino.openDatabase();
-	console.log("db_h",db_h);
-	console.log("databaseName:",domino.getDatabaseName(db_h));
-	var unid="09CD46926428E10EC12581FD0041C90B";
-	var note = domino.getNotesNote(db_h,unid);
-	console.log("note handle: " , note);
-	console.log("note.subject: ",domino.getItemText(note,"Subject"));
-	//console.log("note.tall: ",domino.getItemNumber(note,"tall"));
-	console.log("note.body: ",domino.getItemHTML(db_h,note,"Body"));
-	domino.stermThread();
-	*/
-
 	var use = function(db) {
 		var localDb = {database: db};
 

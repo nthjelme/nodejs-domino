@@ -32,6 +32,7 @@
 
 NAN_METHOD(closeNote);
 NAN_METHOD(getNotesNote);
+NAN_METHOD(getNoteById);
 NAN_METHOD(createNotesNote);
 NAN_METHOD(updateNote);
 NAN_METHOD(getNoteUNID);
@@ -46,10 +47,16 @@ NAN_METHOD(hasItem);
 NAN_METHOD(setAuthor);
 NAN_METHOD(appendItemTextList);
 NAN_METHOD(getMimeItem);
+NAN_METHOD(setMimeItem);
 NAN_METHOD(deleteItem);
 NAN_METHOD(setItemDate);
+NAN_METHOD(getNoteID);
 
+//void nsfNoteId(unsigned short nHandle, NOTEID * noteId);
+STATUS LNCALLBACK ExtractwithCallback(const BYTE* byte, DWORD length, void far* pParam);
 void nsfItemSetText(unsigned short nHandle, const char * itemName, const char * itemValue);
+void nsfItemSetMime(unsigned short nHandle, const char * itemName, const char * itemValue, const char *headers);
+std::string nsfItemGetMime(unsigned short nHandle, const char *itemName);
 void nsfGetItemText(unsigned short nHandle, const char * itemName,char *value);
 void nsfItemSetNumber(unsigned short nHandle, const char * itemName, const double * itemValue);
 void nsfSetItemDate(unsigned short usNHandle, const char * itemName, double unix_time);
