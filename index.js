@@ -80,10 +80,14 @@ function Domino() {
 				return dominoDriver.setItemValue(this.handle,itemName,value);
 			}
 
+			
 			baseNote.setItemMime = function(itemName, header,body) {
+				if (!header) {
+					header = 'Content-Type: application/json';
+				}
 				return dominoDriver.setMimeItem(this.handle,itemName,body,header);
 			}
-
+		
 			baseNote.getItemMime = function(itemName) {
 				let mimeItem = {
 					value: dominoDriver.getMimeItem(this.handle,itemName)
