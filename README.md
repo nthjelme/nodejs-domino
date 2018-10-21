@@ -6,7 +6,9 @@
     npm install domino-nsf
 
 ## Requirements
-The domino-nsf package is currently windows only. The binaries has been build for Win32 and tested with Node 8.9.4, 32bit. 
+From release 0.3.0 it's a source release only, to be able to install, you'll need to follow the instructions in the development section.
+
+Older packages is currently windows only. The binaries has been build for Win32 and tested with Node 8.9.4, 32bit. 
 
 **The Notes program folder needs to be added to the system PATH.**
 
