@@ -147,6 +147,9 @@ return item date value as js date.
     getItemValue('itemName')
 returns the item value as a text,number,text array or date depending on type.
 
+    getItemMime('itemName')
+returns the mime item. 
+
     hasItem('itemName')
 returns true/false if note has item.
 
@@ -167,6 +170,9 @@ set a number value to an item. If the item exists, it will replace the item valu
 
     setItemValue('itemName', value);
 set an value to an item, value can be text,number,text array or js Date object
+
+    setItemMime('itemName','header',value);
+set an mime item.
 
     appendItemValue('itemName','string')
 append a string value to an existing text array.
