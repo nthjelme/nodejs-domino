@@ -1,6 +1,8 @@
 # Node.js driver for NSF
 
 
+*Disclaimer: this is not the official npm module for domino.*
+
 
 ## Install
     npm install domino-nsf
