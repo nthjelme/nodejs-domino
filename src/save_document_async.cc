@@ -314,6 +314,9 @@ NAN_METHOD(SaveDocumentAsync) {
 		docUnid = std::string(*unid);
 		document->Delete(String::NewFromUtf8(isolate, "@unid"));
 	}
+	if (document->Has(String::NewFromUtf8(isolate, "@meta_data"))) {
+		document->Delete(String::NewFromUtf8(isolate, "@meta_data"));
+	}
 	serverStr = std::string(*serverName);
 	dbStr = std::string(*dbName);
 
