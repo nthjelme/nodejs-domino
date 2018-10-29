@@ -32,7 +32,7 @@
 
 
 NAN_METHOD(GetDocumentAsync);
-
+STATUS getItem(const char *field_name);
 STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr, WORD name_len, void far *item_valu, DWORD item_value_len, void far *docRef);
 
 

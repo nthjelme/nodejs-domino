@@ -191,7 +191,7 @@ void nsfItemSetText(unsigned short nHandle, const char * itemName, const char * 
 	}
 }
 
-std::string nsfItemGetMime(unsigned short nHandle, const char *itemName) {
+std::map<std::string, std::string> nsfItemGetMime(unsigned short nHandle, const char *itemName) {
 	STATUS					error = NOERROR;     /* return status from API calls */
 	char *error_text = (char *) malloc(sizeof(char) * 200);   
 	char buf[MAXWORD];
@@ -203,6 +203,7 @@ std::string nsfItemGetMime(unsigned short nHandle, const char *itemName) {
 	char pchFileName[512];
 	NOTEHANDLE   note_handle;
 	note_handle = (NOTEHANDLE)nHandle;
+	std::map<std::string,std::string> mimeItem; 
 	
 	if (error = NSFItemInfo(note_handle, itemName,
 		strlen(itemName), &bidLinksItem,
@@ -210,18 +211,18 @@ std::string nsfItemGetMime(unsigned short nHandle, const char *itemName) {
 		&dwLinksValueLen)) {		
 		DataHelper::GetAPIError(error, error_text);
 		printf("Error getting item info: %s\n",error_text);
-		return NULL;
+		return mimeItem;
 	}
 
 	bMimeDataInFile = NSFIsMimePartInFile(note_handle, bidLinksItem, pchFileName,(WORD)512);
 		
-		if (bMimeDataInFile) {
-			BLOCKID bkItem;
-			WORD field_type;
-			BLOCKID field_block;
-			DWORD field_length;
+	if (bMimeDataInFile) {
+		BLOCKID bkItem;
+		WORD field_type;
+		BLOCKID field_block;
+		DWORD field_length;
 			
-			NSFItemInfo (
+		NSFItemInfo (
             note_handle,        /* note handle */
             "$FILE",        /* field we want */
             (WORD)strlen("$FILE"),    /* length of above */
@@ -229,13 +230,13 @@ std::string nsfItemGetMime(unsigned short nHandle, const char *itemName) {
             &field_type,        /* field type (return) */
             &field_block,        /* field contents (return) */
             &field_length);        /* field length (return) */
-			error = NSFNoteExtractWithCallback(note_handle, bkItem, NULL, 0,ExtractwithCallback, (void*)0);
-			std::string ret;
-    	for(const auto &s : strVec) {        
-        ret += s;
-    	}
+		error = NSFNoteExtractWithCallback(note_handle, bkItem, NULL, 0,ExtractwithCallback, (void*)0);
+		std::string ret;
+   	for(const auto &s : strVec) {        
+       ret += s;
+   	}
 
-			return ret;
+		mimeItem.insert(std::make_pair("value",ret));
 			
 		} else {
 			char *pMime; 
@@ -269,11 +270,16 @@ std::string nsfItemGetMime(unsigned short nHandle, const char *itemName) {
    				&wBodyOffset,
    				&wBodyLen)) {
 			  printf("errr getting mimepartinfobyblockid\n");
-		 		return NULL;
+		 		return mimeItem;
 			}
-		
+			
 			pMime = OSLock(char, hPart);
 			char *pText;
+			char *header = (char *)malloc(wHeadersLen);
+			memcpy(header,pMime,wHeadersLen);
+			header[wHeadersLen-4] = '\0'; // remove last 4 char from header, do not know why, but it works.
+			std::string headerValue = std::string(header);
+			free(header);
 			pText = (char *)pMime + wBoundaryLen+wHeadersLen;			
 			char *fieldText = (char *)malloc(wBodyLen);		
 			memcpy(fieldText, pText, wBodyLen); 
@@ -282,8 +288,10 @@ std::string nsfItemGetMime(unsigned short nHandle, const char *itemName) {
 			free(hPart);
 			std::string bodyValue = std::string(fieldText);
 			free(fieldText);
-			return bodyValue;
+			mimeItem.insert(std::make_pair("value",bodyValue));
+			mimeItem.insert(std::make_pair("header",headerValue));
 		}
+		return mimeItem;
 }
 
 void nsfItemSetMime(unsigned short nHandle, const char * itemName, const char * itemValue, const char *headers) {
@@ -373,80 +381,14 @@ NAN_METHOD(getItemValue) {
 		Local<v8::Date> retval = New<v8::Date>(dateTimeValue).ToLocalChecked();
   	info.GetReturnValue().Set(retval);
 	} else if (item_type== TYPE_MIME_PART) {
-		std::string mime = nsfItemGetMime(n_h, itemName.c_str());
-		/*bMimeDataInFile = NSFIsMimePartInFile(note_handle, bidLinksItem, pchFileName,(WORD)512);
-		
-		if (bMimeDataInFile) {
-			BLOCKID bkItem;
-			WORD field_type;
-			BLOCKID field_block;
-			DWORD field_length;
-			
-			
-			NSFItemInfo (
-            note_handle,      
-            "$FILE",     
-            (WORD)strlen("$FILE"),
-            &bkItem,
-            &field_type,
-            &field_block,
-            &field_length);
-			error = NSFNoteExtractWithCallback(note_handle, bkItem, NULL, 0,ExtractwithCallback, (void*)0);
-			std::string ret;
-    	for(const auto &s : strVec) {        
-        ret += s;
-    	}
-		
+		std::map<std::string, std::string> mime = nsfItemGetMime(n_h, itemName.c_str());
+		std::map<std::string, std::string>::iterator it;
+		it = mime.find("value");
+		if (it != mime.end())
+		{
 			info.GetReturnValue().Set(
-  		Nan::New<String>(ret).ToLocalChecked()); 
-			
-		} else {
-			char *pMime; 
-			WORD wPartType;
-			DWORD dwFlags;
-			WORD wReserved;
-			WORD wPartOffset;
-			WORD wPartLen;
-			WORD wBoundaryOffset;
-			WORD wBoundaryLen;
-			WORD wHeadersOffset;
-			WORD wHeadersLen;
-			WORD wBodyOffset;
-			WORD wBodyLen;
-	
-			DHANDLE hPart;
-			if (error = NSFMimePartGetPart(bidLinksItem, &hPart)) {
-				printf("error getting mime part\n");
-			}
-			
-			if (error = NSFMimePartGetInfoByBLOCKID(bidLinksItem,
-   				&wPartType,
-   				&dwFlags,
-   				&wReserved,
-   				&wPartOffset,
-   				&wPartLen,
-   				&wBoundaryOffset,
-	   			&wBoundaryLen,
-   				&wHeadersOffset,
-   				&wHeadersLen,
-   				&wBodyOffset,
-   				&wBodyLen)) {
-			  printf("errr getting mimepartinfobyblockid\n");
-		 		return;
-			}
-		
-			pMime = OSLock(char, hPart);
-			char *pText;
-			pText = (char *)pMime + wBoundaryLen+wHeadersLen;			
-			char *fieldText = (char *)malloc(wBodyLen);		
-			memcpy(fieldText, pText, wBodyLen); 
-			fieldText[wBodyLen] = '\0';
-			OSUnlock(hPart); 
-			free(hPart);
-			*/
-			info.GetReturnValue().Set(
-  		Nan::New<String>(mime).ToLocalChecked()); 
-			//free(fieldText);
+  		Nan::New<String>(it->second).ToLocalChecked()); 
+		}
 		
 		
 	}
@@ -574,9 +516,19 @@ NAN_METHOD(getMimeItem) {
 	unsigned short nHandle = (unsigned short) n_h;
 	//note_handle = (NOTEHANDLE)nHandle;
 	if (hasItem(nHandle,itemName.c_str())) {
-		std::string mime = nsfItemGetMime(nHandle, itemName.c_str());
-		info.GetReturnValue().Set(
-	  	Nan::New<String>(mime).ToLocalChecked()); 
+		std::map<std::string, std::string> mime = nsfItemGetMime(nHandle, itemName.c_str());
+		std::map<std::string, std::string>::iterator it;
+		Local<Object> mimeItem = Nan::New<Object>();
+		it = mime.find("value");
+		if (it != mime.end())
+		{
+			Nan::Set(mimeItem,  New<v8::String>("value").ToLocalChecked(),Nan::New<String>(it->second).ToLocalChecked()); 
+		}
+		it = mime.find("header");
+		if (it != mime.end()) {
+			Nan::Set(mimeItem,  New<v8::String>("header").ToLocalChecked(),Nan::New<String>(it->second).ToLocalChecked()); 
+		}
+		info.GetReturnValue().Set(mimeItem);
 	} else {
 		printf("can't find mime item by name: %s\n ", itemName.c_str());
 		info.GetReturnValue().Set(

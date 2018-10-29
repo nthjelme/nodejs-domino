@@ -41,6 +41,7 @@ public:
 	}
 
 	string stringValue;
+	string headerValue;
 	double numberValue;
 	std::vector<char*> vectorStrValue;
 	char * name;

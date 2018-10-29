@@ -28,6 +28,7 @@
 #include "document_async.h"
 #include "DocumentItem.h"
 #include "DataHelper.h"
+#include "notes_document.h"
 #include <nsfdb.h>
 #include <nif.h>
 #include <nsfnote.h>
@@ -69,8 +70,8 @@ struct delete_pointer_element
 
 class DocumentWorker : public AsyncWorker {
 public:
-	DocumentWorker(Callback *callback, std::string serverName, std::string dbName, std::string unid)
-		: AsyncWorker(callback), serverName(serverName), dbName(dbName), unid(unid){
+	DocumentWorker(Callback *callback, std::string serverName, std::string dbName, std::string unid,std::vector<string> fields)
+		: AsyncWorker(callback), serverName(serverName), dbName(dbName), unid(unid),fields(fields){
 	}
 	~DocumentWorker() {
 		// delete name pointer
@@ -86,9 +87,10 @@ public:
 	// It is not safe to access V8, or V8 data structures
 	// here, so everything we need for input and output
 	// should go on `this`.
-	void Execute() {			
+	void Execute() {
 		DBHANDLE    db_handle;      /* handle of source database */
 		UNID temp_unid;
+		NOTEID tempID;
 		STATUS   error = NOERROR;           /* return status from API calls */
 		char *error_text =  (char *) malloc(sizeof(char) * 200);   
 
@@ -126,20 +128,47 @@ public:
 			return;
 		}
 
-
-		if (error = NSFItemScan(
-			note_handle,	/* note handle */
-			field_actions,	/* action routine for fields */
-			&note_handle))	/* argument to action routine */
-
-		{					
+		// repoen note by by note id
+		NSFNoteGetInfo(note_handle, _NOTE_ID, &tempID);
+		NSFNoteClose(note_handle);
+		if (error = NSFNoteOpenExt(db_handle, tempID,
+                                  OPEN_RAW_MIME_PART, &note_handle)) {
+			printf("error opening notebyid \n");
 			DataHelper::GetAPIError(error,error_text);
 			SetErrorMessage(error_text);
-			NSFNoteClose(note_handle);
 			NSFDbClose(db_handle);
 			free(error_text);
-			return;
+
 		}
+		if (fields.size()>0) {
+		for (size_t j = 0; j < fields.size(); j++) {
+				error = getItem(fields[j].c_str());
+				if (error!=NOERROR) {
+					DataHelper::GetAPIError(error,error_text);
+					SetErrorMessage(error_text);
+					NSFNoteClose(note_handle);
+					NSFDbClose(db_handle);
+					free(error_text);
+					return;
+				}
+			}
+		} else {
+		  if (error = NSFItemScan(
+				note_handle,	/* note handle */
+				field_actions,	/* action routine for fields */
+				&note_handle))	/* argument to action routine */
+
+			{
+				DataHelper::GetAPIError(error,error_text);
+				SetErrorMessage(error_text);
+				NSFNoteClose(note_handle);
+				NSFDbClose(db_handle);
+				free(error_text);
+				return;
+			}
+		}
+
+		NSFNoteClose(note_handle);
 
 		if (error = NSFDbClose(db_handle))
 		{
@@ -159,19 +188,28 @@ public:
 	void HandleOKCallback() {
 		HandleScope scope;		
 		Local<Object> resDoc = Nan::New<Object>();
+		Local<Object> metadata = Nan::New<Object>();
+		Local<Array> itemsMetaArray = Nan::New<Array>();
+		char *typeKey = "type";
 		Nan::Set(resDoc, New<v8::String>("@unid").ToLocalChecked(), New<v8::String>(unid).ToLocalChecked());
 		for (std::size_t i = 0; i < items.size(); i++) {
 			DocumentItem *di = items[i];
-			if (di->type == 1) {				
+			Local<Object> itemKey = Nan::New<Object>();
+			Local<Object> itemMeta = Nan::New<Object>();
+			if (di->type == 1) {
+				Nan::Set(itemMeta, New<v8::String>("type").ToLocalChecked(), New<v8::String>("string").ToLocalChecked());
 				Nan::Set(resDoc, New<v8::String>(di->name).ToLocalChecked(), New<v8::String>(di->stringValue).ToLocalChecked());
 			}
 			else if (di->type == 2) {
+				Nan::Set(itemMeta,  New<v8::String>("type").ToLocalChecked(), New<v8::String>("number").ToLocalChecked());
 				Nan::Set(resDoc, New<String>(di->name).ToLocalChecked(), New<Number>(di->numberValue));
 			}
 			else if (di->type == 3) {
+				Nan::Set(itemMeta,  New<v8::String>("type").ToLocalChecked(), New<v8::String>("date").ToLocalChecked());
 				Nan::Set(resDoc, New<v8::String>(di->name).ToLocalChecked(), New<v8::Date>(di->numberValue).ToLocalChecked());
 			}
-			else if (di->type == 4) {				
+			else if (di->type == 4) {
+				Nan::Set(itemMeta,  New<v8::String>("type").ToLocalChecked(), New<v8::String>("array").ToLocalChecked());
 				Local<Array> arr = New<Array>();
 				for (size_t j = 0; j < di->vectorStrValue.size(); j++) {
 					if (di->vectorStrValue[j]) {						
@@ -179,8 +217,18 @@ public:
 					}					
 				}
 				Nan::Set(resDoc, New<v8::String>(di->name).ToLocalChecked(), arr);
-			}			
-		}		
+			}
+			else if (di->type == 5) {
+				printf("has mime type with value%s\n", di->stringValue.c_str());
+				Nan::Set(itemMeta, New<v8::String>("type").ToLocalChecked(), New<v8::String>("mime").ToLocalChecked());
+				Nan::Set(itemMeta, New<v8::String>("header").ToLocalChecked(), New<v8::String>(di->headerValue).ToLocalChecked());
+				Nan::Set(resDoc, New<v8::String>(di->name).ToLocalChecked(), New<v8::String>(di->stringValue).ToLocalChecked());
+			}
+			Nan::Set(itemKey,New<v8::String>(di->name).ToLocalChecked(),itemMeta);
+			Nan::Set(itemsMetaArray,i, itemKey);
+		}
+		Nan::Set(metadata, New<v8::String>("items").ToLocalChecked(), itemsMetaArray);
+		Nan::Set(resDoc, New<v8::String>("@meta_data").ToLocalChecked(), metadata);
 		Local<Value> argv[] = {
 			Null()
 			, resDoc
@@ -205,11 +253,10 @@ private:
 	std::string serverName;
 	std::string dbName;
 	std::string unid;	
+	std::vector<std::string> fields;
 };
 
-
-
-STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr, WORD name_len, void far *item_valu, DWORD item_value_len, void far *note_handle2) {
+STATUS getItem(const char *field_name) {
 	WORD         field_len;
 	char         field_text[132000];
 	STATUS		error = NOERROR;
@@ -219,20 +266,14 @@ STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr
 	DWORD                  dwLinksValueLen;
 	BLOCKID                bidLinksValue;
 	WORD                   item_type;
+	WORD fldNameLenght = strlen(field_name);
 	DocumentItem * di = new DocumentItem();
 
-
-	char *field_name = (char*)malloc(name_len + 1);
-	if (field_name) {		
-		memcpy(field_name, name_ptr, name_len);
-		field_name[name_len] = '\0';
-	}
-	
 	if (error = NSFItemInfo(note_handle, field_name,
 		strlen(field_name), &bidLinksItem,
 		&item_type, &bidLinksValue,
 		&dwLinksValueLen)) {
-		
+		printf("error getting nsfitem info\n");
 		return (error);
 	}
 	if (item_type == TYPE_TEXT) {
@@ -246,10 +287,10 @@ STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr
 		char buf[MAXWORD];
 		OSTranslate(OS_TRANSLATE_LMBCS_TO_UTF8, field_text, MAXWORD, buf, MAXWORD);
 		di->stringValue = std::string(buf);
-		di->name = (char*)malloc(name_len + 1);
+		di->name = (char*)malloc(fldNameLenght + 1);
 		if (di->name) {
-			memcpy(di->name, name_ptr, name_len);
-			di->name[name_len] = '\0';
+			memcpy(di->name, field_name, fldNameLenght);
+			di->name[fldNameLenght] = '\0';
 		}		
 		di->type = 1;
 		items.push_back(di);
@@ -272,7 +313,11 @@ STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr
 			
 		}
 		di->vectorStrValue = vectorStrValue;
-		di->name = field_name;
+		di->name = (char*)malloc(fldNameLenght + 1);
+		if (di->name) {
+			memcpy(di->name, field_name, fldNameLenght);
+			di->name[fldNameLenght] = '\0';
+		}
 		di->type = 4;
 		items.push_back(di);
 	}
@@ -282,11 +327,14 @@ STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr
 			field_name,
 			&number_field);
 		di->numberValue = (double)number_field;
-		di->name = field_name;
+		di->name = (char*)malloc(fldNameLenght + 1);
+		if (di->name) {
+			memcpy(di->name, field_name, fldNameLenght);
+			di->name[fldNameLenght] = '\0';
+		}
 		di->type = 2;
 		items.push_back(di);
-	}
-	
+	}	
 	else if (item_type == TYPE_TIME) {
 		TIMEDATE time_date;
 		if (NSFItemGetTime(note_handle,
@@ -314,13 +362,56 @@ STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr
 			
 			double dateTimeValue = dtime * 1000; // convert to double time
 			di->numberValue = dateTimeValue;
-			di->name = field_name;
+			di->name = (char*)malloc(fldNameLenght + 1);
+			if (di->name) {
+				memcpy(di->name, field_name, fldNameLenght);
+				di->name[fldNameLenght] = '\0';
+			}
 			di->type = 3;
 			items.push_back(di);
 		}
-
-
+	} else if (item_type == TYPE_MIME_PART) {
+		std::map<std::string, std::string> mime = nsfItemGetMime((unsigned short)note_handle, field_name);
+		std::map<std::string, std::string>::iterator it;
+		di->name = (char*)malloc(fldNameLenght + 1);
+		if (di->name) {
+			memcpy(di->name, field_name, fldNameLenght);
+			di->name[fldNameLenght] = '\0';
+		}
+		di->type = 5;
+		it = mime.find("value");
+ 
+		// Check if element exists in map or not
+		if (it != mime.end())
+		{
+			di->stringValue = it->second;
+			
+		}
+		it = mime.find("header");
+		if (it != mime.end()) {
+			di->headerValue = it->second;
+		}
+		items.push_back(di);
 	}
+	return error;
+}
+
+
+STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr, WORD name_len, void far *item_valu, DWORD item_value_len, void far *note_handle2) {
+	STATUS error = NOERROR;	
+	char *field_name = (char*)malloc(name_len + 1);
+	if (field_name) {		
+		memcpy(field_name, name_ptr, name_len);
+		field_name[name_len] = '\0';
+	}
+	
+	error = getItem(field_name);
+	if (error != NOERROR) {
+		printf("error getitem:%s\n", field_name);
+		free(field_name);
+		return (error);
+	}
+	//free(field_name);
 
 	//delete field_name;
 
@@ -329,10 +420,26 @@ STATUS LNCALLBACK field_actions(WORD unused, WORD item_flags, char far *name_ptr
 }
 
 NAN_METHOD(GetDocumentAsync) {
-	v8::Isolate* isolate = info.GetIsolate();
-
+	v8::Isolate* isolate = info.GetIsolate();  
 	Local<Object> param = (info[0]->ToObject());
 	Local<String> unidParam = (info[1]->ToString());
+	std::vector<string> fields;	
+	if (info.Length() ==4	) {
+		// option parameter
+		Local<Object> options = (info[2]->ToObject());
+		
+		Local<Array> fieldsArray = Local<Array>::Cast(options->Get(String::NewFromUtf8(isolate, "fields")));
+		unsigned int num_locations = fieldsArray->Length();
+		if (num_locations > 0) {
+				
+				for (unsigned int i = 0; i < num_locations; i++) {
+					Local<Object> obj = Local<Object>::Cast(fieldsArray->Get(i));
+					String::Utf8Value value(obj->ToString());
+					std::string field_val = std::string(*value);					
+					fields.push_back(field_val);
+				}
+		}
+	}
 	Local<Value> serverKey = String::NewFromUtf8(isolate, "server");
 	Local<Value> databaseKey = String::NewFromUtf8(isolate, "database");
 	Local<Value> serverVal = param->Get(serverKey);
@@ -347,8 +454,14 @@ NAN_METHOD(GetDocumentAsync) {
 	std::string unidStr;
 	serverStr = std::string(*serverName);
 	dbStr = std::string(*dbName);
-	unidStr = std::string(*unid);		
-	Callback *callback = new Callback(info[2].As<Function>());
+	unidStr = std::string(*unid);	
+	Callback *callback;
+	if (info.Length() ==4	) {
+		// has option parameter, callback is parameter 3
+		callback = new Callback(info[3].As<Function>());
+	} else {	
+	 callback = new Callback(info[2].As<Function>());
+	}
 
-	AsyncQueueWorker(new DocumentWorker(callback, serverStr,dbStr,unidStr));
+	AsyncQueueWorker(new DocumentWorker(callback, serverStr,dbStr,unidStr,fields));
 }

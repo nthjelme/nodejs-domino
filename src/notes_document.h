@@ -29,6 +29,7 @@
 
 #include <nan.h>
 #include "global.h"
+#include <map>
 
 NAN_METHOD(closeNote);
 NAN_METHOD(getNotesNote);
@@ -56,7 +57,7 @@ NAN_METHOD(getNoteID);
 STATUS LNCALLBACK ExtractwithCallback(const BYTE* byte, DWORD length, void far* pParam);
 void nsfItemSetText(unsigned short nHandle, const char * itemName, const char * itemValue);
 void nsfItemSetMime(unsigned short nHandle, const char * itemName, const char * itemValue, const char *headers);
-std::string nsfItemGetMime(unsigned short nHandle, const char *itemName);
+std::map<std::string, std::string> nsfItemGetMime(unsigned short nHandle, const char *itemName);
 void nsfGetItemText(unsigned short nHandle, const char * itemName,char *value);
 void nsfItemSetNumber(unsigned short nHandle, const char * itemName, const double * itemValue);
 void nsfSetItemDate(unsigned short usNHandle, const char * itemName, double unix_time);
