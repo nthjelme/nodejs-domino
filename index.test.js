@@ -67,9 +67,28 @@ describe('domino-nsf',function() {
 			expect(savedDocument).to.have.property('array').to.eql(["a","b","c"]);
 		});
 	});
-
-	describe('get document', function() {
+  describe('get document fields', function() {
 		var document = {};
+		before(function(done) {
+			db.get(savedDocumentUnid,{fields: ['Name','Number']},function(err,result) {
+				if (err) {
+					done(err);
+				} else {
+					document = result;
+					done();
+				}
+			});
+		});
+		it('shoud have a Name property that equals "Test"',function() {
+			expect(document).to.have.property('Name').to.eql("Test");
+		});
+		it('shoud have not have a date property ',function() {
+			expect(document).to.not.have.property('date');
+		});
+	});
+	describe('get all document items', function() {
+		var document = {};
+
 		before(function(done) {
 			db.get(savedDocumentUnid,function(err,result) {
 				if (err) {

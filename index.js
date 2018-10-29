@@ -135,8 +135,31 @@ function Domino() {
 			});*/
 		}
 
-		var get = function(unid,callback) {
-			dominoDriver.getDocumentAsync(localDb,unid,function(error,document) {
+		var get = function(unid,param1,param2) {
+			if (typeof (param1) == 'function') {
+				dominoDriver.getDocumentAsync(localDb,unid,function(error,document) {
+					if (document) {
+						document.getResponses = function(responseCallback) {
+							dominoDriver.getResponseDocumentsAsync(localDb,this["@unid"], function(err,res) {
+								responseCallback(err,res);
+							});
+						};
+						document.makeResponse = function(parent,responseCallback) {
+							dominoDriver.makeResponseDocumentAsync(localDb,this["@unid"], parent["@unid"], function(error,result) {
+								responseCallback(error,result);
+							});
+						}
+						document.save = function(documentCallback) {
+							dominoDriver.saveDocumentAsync(localDb,this,function(error,document) {
+								documentCallback(error,document);
+							});
+	
+						}
+					}
+					param1(error,document);
+				});
+			} else if (typeof (param2 == 'function')) {
+				dominoDriver.getDocumentAsync(localDb,unid,param1,function(error,document) {
 				if (document) {
 					document.getResponses = function(responseCallback) {
 						dominoDriver.getResponseDocumentsAsync(localDb,this["@unid"], function(err,res) {
@@ -155,9 +178,12 @@ function Domino() {
 
 					}
 				}
-				callback(error,document);
-			});
+				param2(error,document);
+			});	
+			}
+			
 		}
+		
 
 		var insert = function(document,callback) {
 			dominoDriver.saveDocumentAsync(localDb,document,function(error,document) {
