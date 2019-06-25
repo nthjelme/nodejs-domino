@@ -208,8 +208,7 @@ NOTES_LIB must contain:
 * the path to the Notes C library folder
 
 ### Linux/Docker
-To set up a development enviroment using Docker, you can use this 
-[Dockerfile]("https://github.com/nthjelme/nodejs-domino/blob/master/docker/Dockerfile")
+To set up a development enviroment using Docker, you can use this [Dockerfile](https://github.com/nthjelme/nodejs-domino/blob/master/docker/Dockerfile)
 
 
 #### Configuring and building
